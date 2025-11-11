@@ -124,7 +124,30 @@ def carregar_dados():
                 if 'escola' not in produto:
                     produto['escola'] = "Municipal"  # Valor padrão
 
+def verificar_e_corrigir_dados():
+    """Verifica e corrige dados corrompidos no session_state"""
+    
+    # Verificar pedidos
+    pedidos_validos = []
+    for pedido in st.session_state.pedidos:
+        if isinstance(pedido, dict):
+            # Garantir campos obrigatórios
+            if 'id' not in pedido:
+                pedido['id'] = len(pedidos_validos) + 1
+            if 'status' not in pedido:
+                pedido['status'] = 'Pendente'
+            if 'cliente' not in pedido:
+                pedido['cliente'] = 'Cliente Desconhecido'
+            if 'escola' not in pedido:
+                pedido['escola'] = 'Municipal'
+            
+            pedidos_validos.append(pedido)
+    
+    st.session_state.pedidos = pedidos_validos
+
+# Carregar e verificar dados
 carregar_dados()
+verificar_e_corrigir_dados()
 
 # =========================================
 # 🎨 NAVEGAÇÃO SIMPLES E FUNCIONAL
@@ -133,10 +156,14 @@ carregar_dados()
 st.sidebar.title("👕 Sistema de Fardamentos")
 
 # Menu na sidebar - SIMPLES E FUNCIONAL
-menu = st.sidebar.radio(
-    "Navegação",
-    ["📊 Dashboard", "📦 Pedidos", "👥 Clientes", "👕 Fardamentos", "📦 Estoque", "📈 Relatórios"]
-)
+menu_options = ["📊 Dashboard", "📦 Pedidos", "👥 Clientes", "👕 Fardamentos", "📦 Estoque", "📈 Relatórios"]
+if 'menu' not in st.session_state:
+    st.session_state.menu = menu_options[0]
+
+menu = st.sidebar.radio("Navegação", menu_options, index=menu_options.index(st.session_state.menu))
+
+# Atualizar menu no session_state
+st.session_state.menu = menu
 
 # HEADER DINÂMICO
 if menu == "📊 Dashboard":
@@ -158,7 +185,7 @@ st.markdown("---")
 # 📱 PÁGINAS DO SISTEMA - CORRIGIDAS
 # =========================================
 
-# DASHBOARD
+# DASHBOARD - CORRIGIDO
 if menu == "📊 Dashboard":
     st.header("🎯 Métricas em Tempo Real")
     
@@ -170,7 +197,7 @@ if menu == "📊 Dashboard":
         st.metric("Total de Pedidos", total_pedidos)
     
     with col2:
-        pedidos_pendentes = len([p for p in st.session_state.pedidos if p['status'] == 'Pendente'])
+        pedidos_pendentes = len([p for p in st.session_state.pedidos if p.get('status', 'Pendente') == 'Pendente'])
         st.metric("Pedidos Pendentes", pedidos_pendentes)
     
     with col3:
@@ -181,22 +208,22 @@ if menu == "📊 Dashboard":
         produtos_baixo_estoque = len([p for p in st.session_state.produtos if p.get('estoque', 0) < 5])
         st.metric("Alertas de Estoque", produtos_baixo_estoque, delta=-produtos_baixo_estoque)
     
-    # Ações Rápidas
+    # Ações Rápidas - CORRIGIDO
     st.header("⚡ Ações Rápidas")
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if st.button("📝 Novo Pedido", use_container_width=True):
+        if st.button("📝 Novo Pedido", use_container_width=True, key="btn_pedido"):
             st.session_state.menu = "📦 Pedidos"
             st.rerun()
     
     with col2:
-        if st.button("👥 Cadastrar Cliente", use_container_width=True):
+        if st.button("👥 Cadastrar Cliente", use_container_width=True, key="btn_cliente"):
             st.session_state.menu = "👥 Clientes"
             st.rerun()
     
     with col3:
-        if st.button("👕 Cadastrar Fardamento", use_container_width=True):
+        if st.button("👕 Cadastrar Fardamento", use_container_width=True, key="btn_fardamento"):
             st.session_state.menu = "👕 Fardamentos"
             st.rerun()
     
@@ -216,25 +243,46 @@ if menu == "📊 Dashboard":
     with col1:
         st.subheader("📈 Vendas por Escola")
         if st.session_state.pedidos:
-            df_vendas = pd.DataFrame(st.session_state.pedidos)
-            vendas_por_escola = df_vendas['escola'].value_counts()
-            fig = px.bar(vendas_por_escola, title="Vendas por Escola")
-            st.plotly_chart(fig)
+            # Criar dados para gráfico com tratamento seguro
+            escolas_data = {}
+            for pedido in st.session_state.pedidos:
+                escola = pedido.get('escola', 'N/A')
+                if escola in escolas_data:
+                    escolas_data[escola] += 1
+                else:
+                    escolas_data[escola] = 1
+            
+            if escolas_data:
+                df_escolas = pd.DataFrame(list(escolas_data.items()), columns=['Escola', 'Quantidade'])
+                fig = px.bar(df_escolas, x='Escola', y='Quantidade', title="Vendas por Escola")
+                st.plotly_chart(fig)
+            else:
+                st.info("📋 Nenhum dado para mostrar")
         else:
             st.info("📋 Nenhum pedido cadastrado ainda")
     
     with col2:
         st.subheader("🎯 Status dos Pedidos")
         if st.session_state.pedidos:
-            df_vendas = pd.DataFrame(st.session_state.pedidos)
-            vendas_status = df_vendas['status'].value_counts()
-            fig = px.pie(vendas_status, values=vendas_status.values, 
-                        names=vendas_status.index, title="Distribuição por Status")
-            st.plotly_chart(fig)
+            # Criar dados para gráfico com tratamento seguro
+            status_data = {}
+            for pedido in st.session_state.pedidos:
+                status = pedido.get('status', 'Pendente')
+                if status in status_data:
+                    status_data[status] += 1
+                else:
+                    status_data[status] = 1
+            
+            if status_data:
+                df_status = pd.DataFrame(list(status_data.items()), columns=['Status', 'Quantidade'])
+                fig = px.pie(df_status, values='Quantidade', names='Status', title="Distribuição por Status")
+                st.plotly_chart(fig)
+            else:
+                st.info("📋 Nenhum dado para mostrar")
         else:
             st.info("📋 Nenhum pedido para analisar")
 
-# PEDIDOS - COM MÚLTIPLOS ITENS
+# PEDIDOS - CORRIGIDO
 elif menu == "📦 Pedidos":
     tab1, tab2, tab3, tab4 = st.tabs(["📝 Novo Pedido", "📋 Listar Pedidos", "🔄 Alterar Status", "✏️ Editar Pedido"])
     
@@ -398,7 +446,32 @@ elif menu == "📦 Pedidos":
     with tab2:
         st.header("📋 Lista de Pedidos")
         if st.session_state.pedidos:
-            df_pedidos = pd.DataFrame(st.session_state.pedidos)
+            # Converter para DataFrame com tratamento de erros
+            pedidos_data = []
+            for pedido in st.session_state.pedidos:
+                pedido_data = {
+                    'id': pedido.get('id', 'N/A'),
+                    'cliente': pedido.get('cliente', 'N/A'),
+                    'escola': pedido.get('escola', 'N/A'),
+                    'status': pedido.get('status', 'Pendente'),
+                    'data_pedido': pedido.get('data_pedido', 'N/A'),
+                    'data_entrega_prevista': pedido.get('data_entrega_prevista', 'N/A'),
+                    'quantidade_total': pedido.get('quantidade_total', 0),
+                    'valor_total': pedido.get('valor_total', 0)
+                }
+                
+                # Tratar produtos antigos (sem lista de itens)
+                if 'itens' in pedido:
+                    # Novo formato com múltiplos itens
+                    produtos_lista = [f"{item['produto']} (x{item['quantidade']})" for item in pedido['itens']]
+                    pedido_data['produtos'] = ", ".join(produtos_lista)
+                else:
+                    # Formato antigo (produto único)
+                    pedido_data['produtos'] = pedido.get('produto', 'N/A')
+                    
+                pedidos_data.append(pedido_data)
+            
+            df_pedidos = pd.DataFrame(pedidos_data)
             df_pedidos = df_pedidos.sort_values('id', ascending=False)
             
             # Filtros
@@ -425,8 +498,19 @@ elif menu == "📦 Pedidos":
     with tab3:
         st.header("🔄 Alterar Status do Pedido")
         if st.session_state.pedidos:
-            pedido_selecionado = st.selectbox("📦 Selecione o pedido", 
-                [f"ID: {p['id']} - {p['cliente']} - {p['produto']} - Status: {p['status']}" for p in st.session_state.pedidos])
+            # Criar lista de pedidos com tratamento seguro
+            opcoes_pedidos = []
+            for p in st.session_state.pedidos:
+                cliente = p.get('cliente', 'N/A')
+                produto = p.get('produto', 'Ver itens')  # Para pedidos antigos
+                if 'itens' in p:
+                    # Novo formato - mostrar primeiro item
+                    if p['itens']:
+                        produto = f"{p['itens'][0]['produto']} +{len(p['itens'])-1} itens" if len(p['itens']) > 1 else p['itens'][0]['produto']
+                
+                opcoes_pedidos.append(f"ID: {p.get('id', 'N/A')} - {cliente} - {produto} - Status: {p.get('status', 'Pendente')}")
+            
+            pedido_selecionado = st.selectbox("📦 Selecione o pedido", opcoes_pedidos)
             
             novo_status = st.selectbox("🎯 Novo Status", 
                 ["Pendente", "Cortando", "Costurando", "Pronto", "Entregue", "Cancelado"])
@@ -434,7 +518,7 @@ elif menu == "📦 Pedidos":
             if st.button("🔄 Atualizar Status", type="primary"):
                 pedido_id = int(pedido_selecionado.split(' - ')[0].replace('ID: ', ''))
                 for pedido in st.session_state.pedidos:
-                    if pedido['id'] == pedido_id:
+                    if pedido.get('id') == pedido_id:
                         pedido['status'] = novo_status
                         break
                 salvar_dados()
@@ -445,48 +529,82 @@ elif menu == "📦 Pedidos":
     with tab4:
         st.header("✏️ Editar Pedido")
         if st.session_state.pedidos:
+            # Criar lista de pedidos com tratamento seguro
+            opcoes_editar = []
+            for p in st.session_state.pedidos:
+                cliente = p.get('cliente', 'N/A')
+                produto = p.get('produto', 'Ver itens')
+                if 'itens' in p and p['itens']:
+                    produto = p['itens'][0]['produto']
+                
+                opcoes_editar.append(f"ID: {p.get('id', 'N/A')} - {cliente} - {produto}")
+            
             pedido_editar = st.selectbox("📦 Selecione o pedido para editar", 
-                [f"ID: {p['id']} - {p['cliente']} - {p['produto']}" for p in st.session_state.pedidos],
-                key="editar_pedido")
+                opcoes_editar, key="editar_pedido")
             
             if pedido_editar:
                 pedido_id = int(pedido_editar.split(' - ')[0].replace('ID: ', ''))
-                pedido = next((p for p in st.session_state.pedidos if p['id'] == pedido_id), None)
+                pedido = next((p for p in st.session_state.pedidos if p.get('id') == pedido_id), None)
                 
                 if pedido:
+                    st.warning("⚠️ Para pedidos com múltiplos itens, edite excluindo e criando novo pedido")
+                    
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.write(f"**👕 Produto:** {pedido['produto']}")
-                        st.write(f"**📏 Tamanho:** {pedido.get('tamanho', 'N/A')}")
-                        nova_quantidade = st.number_input("🔢 Nova Quantidade", 
-                            min_value=1, value=pedido['quantidade'], key="qtd_edit")
+                        st.write(f"**👤 Cliente:** {pedido.get('cliente', 'N/A')}")
+                        st.write(f"**🏫 Escola:** {pedido.get('escola', 'N/A')}")
+                        
+                        # Quantidade total (para pedidos antigos)
+                        if 'quantidade' in pedido:
+                            nova_quantidade = st.number_input("🔢 Nova Quantidade", 
+                                min_value=1, value=pedido['quantidade'], key="qtd_edit")
+                        else:
+                            nova_quantidade = pedido.get('quantidade_total', 1)
+                            st.write(f"**📦 Quantidade Total:** {nova_quantidade}")
+                    
                     with col2:
+                        # Data de entrega
+                        if 'data_entrega_prevista' in pedido:
+                            try:
+                                data_antiga = datetime.strptime(pedido['data_entrega_prevista'], "%d/%m/%Y")
+                            except:
+                                data_antiga = datetime.now()
+                        else:
+                            data_antiga = datetime.now()
+                        
                         nova_data = st.date_input("📅 Nova Data de Entrega", 
-                            value=datetime.strptime(pedido['data_entrega_prevista'], "%d/%m/%Y"),
-                            key="data_edit")
+                            value=data_antiga, key="data_edit")
+                        
                         novas_observacoes = st.text_area("📝 Novas Observações", 
-                            value=pedido['observacoes'], key="obs_edit")
+                            value=pedido.get('observacoes', ''), key="obs_edit")
                     
                     if st.button("💾 Salvar Alterações", type="primary"):
-                        # Reverter estoque antigo e aplicar novo
-                        produto_antigo = next((p for p in st.session_state.produtos 
-                            if p['nome'] == pedido['produto'] and p.get('tamanho') == pedido.get('tamanho')), None)
+                        # Atualizar dados básicos
+                        pedido['data_entrega_prevista'] = nova_data.strftime("%d/%m/%Y")
+                        pedido['observacoes'] = novas_observacoes
                         
-                        if produto_antigo:
-                            diferenca = nova_quantidade - pedido['quantidade']
-                            produto_antigo['estoque'] -= diferenca
+                        # Para pedidos antigos com quantidade única
+                        if 'quantidade' in pedido and pedido['quantidade'] != nova_quantidade:
+                            # Reverter estoque antigo
+                            produto_antigo = next((p for p in st.session_state.produtos 
+                                if p['nome'] == pedido.get('produto') and p.get('tamanho') == pedido.get('tamanho')), None)
                             
-                            if produto_antigo['estoque'] < 0:
-                                st.error("❌ Estoque insuficiente para esta quantidade!")
-                                produto_antigo['estoque'] += diferenca
+                            if produto_antigo:
+                                diferenca = nova_quantidade - pedido['quantidade']
+                                produto_antigo['estoque'] -= diferenca
+                                
+                                if produto_antigo['estoque'] < 0:
+                                    st.error("❌ Estoque insuficiente para esta quantidade!")
+                                    produto_antigo['estoque'] += diferenca
+                                else:
+                                    pedido['quantidade'] = nova_quantidade
+                                    salvar_dados()
+                                    st.success("✅ Pedido atualizado com sucesso!")
                             else:
-                                pedido['quantidade'] = nova_quantidade
-                                pedido['data_entrega_prevista'] = nova_data.strftime("%d/%m/%Y")
-                                pedido['observacoes'] = novas_observacoes
-                                salvar_dados()
-                                st.success("✅ Pedido atualizado com sucesso!")
+                                st.error("❌ Produto não encontrado no estoque")
                         else:
-                            st.error("❌ Produto não encontrado no estoque")
+                            salvar_dados()
+                            st.success("✅ Pedido atualizado com sucesso!")
         else:
             st.info("📋 Nenhum pedido cadastrado")
 
@@ -804,7 +922,23 @@ elif menu == "📈 Relatórios":
     with tab1:
         st.header("💰 Relatório de Vendas")
         if st.session_state.pedidos:
-            df_vendas = pd.DataFrame(st.session_state.pedidos)
+            # Criar DataFrame seguro para relatórios
+            vendas_data = []
+            for pedido in st.session_state.pedidos:
+                venda = {
+                    'id': pedido.get('id', 'N/A'),
+                    'cliente': pedido.get('cliente', 'N/A'),
+                    'escola': pedido.get('escola', 'N/A'),
+                    'status': pedido.get('status', 'Pendente'),
+                    'data_pedido': pedido.get('data_pedido', 'N/A'),
+                    'data_entrega_prevista': pedido.get('data_entrega_prevista', 'N/A'),
+                    'quantidade_total': pedido.get('quantidade_total', 0),
+                    'valor_total': pedido.get('valor_total', 0),
+                    'observacoes': pedido.get('observacoes', '')
+                }
+                vendas_data.append(venda)
+            
+            df_vendas = pd.DataFrame(vendas_data)
             
             # Métricas de vendas
             col1, col2, col3 = st.columns(3)
@@ -812,7 +946,7 @@ elif menu == "📈 Relatórios":
                 total_vendas = len(df_vendas)
                 st.metric("📦 Total de Pedidos", total_vendas)
             with col2:
-                valor_total = df_vendas['valor_total'].sum() if 'valor_total' in df_vendas.columns else 0
+                valor_total = df_vendas['valor_total'].sum()
                 st.metric("💰 Valor Total", f"R$ {valor_total:.2f}")
             with col3:
                 media_pedido = valor_total / total_vendas if total_vendas > 0 else 0
@@ -820,16 +954,18 @@ elif menu == "📈 Relatórios":
             
             # Vendas por escola
             st.subheader("🏫 Vendas por Escola")
-            vendas_escola = df_vendas['escola'].value_counts()
-            fig1 = px.bar(vendas_escola, title="Vendas por Escola")
-            st.plotly_chart(fig1)
+            if not df_vendas.empty:
+                vendas_escola = df_vendas['escola'].value_counts()
+                fig1 = px.bar(vendas_escola, title="Vendas por Escola")
+                st.plotly_chart(fig1)
             
             # Vendas por status
             st.subheader("🎯 Status dos Pedidos")
-            vendas_status = df_vendas['status'].value_counts()
-            fig2 = px.pie(vendas_status, values=vendas_status.values, 
-                         names=vendas_status.index, title="Distribuição por Status")
-            st.plotly_chart(fig2)
+            if not df_vendas.empty:
+                vendas_status = df_vendas['status'].value_counts()
+                fig2 = px.pie(vendas_status, values=vendas_status.values, 
+                             names=vendas_status.index, title="Distribuição por Status")
+                st.plotly_chart(fig2)
             
             # Tabela detalhada
             st.subheader("📋 Detalhes dos Pedidos")
@@ -866,13 +1002,14 @@ elif menu == "📈 Relatórios":
             
             # Estoque por categoria
             st.subheader("📊 Estoque por Categoria")
-            estoque_categoria = df_estoque.groupby('categoria')['estoque'].sum()
-            fig3 = px.bar(estoque_categoria, title="Estoque por Categoria")
-            st.plotly_chart(fig3)
+            if not df_estoque.empty:
+                estoque_categoria = df_estoque.groupby('categoria')['estoque'].sum()
+                fig3 = px.bar(estoque_categoria, title="Estoque por Categoria")
+                st.plotly_chart(fig3)
             
             # Estoque por escola
             st.subheader("🏫 Estoque por Escola")
-            if 'escola' in df_estoque.columns:
+            if 'escola' in df_estoque.columns and not df_estoque.empty:
                 estoque_escola = df_estoque.groupby('escola')['estoque'].sum()
                 fig4 = px.pie(estoque_escola, values=estoque_escola.values, 
                              names=estoque_escola.index, title="Estoque por Escola")
@@ -900,9 +1037,10 @@ elif menu == "📈 Relatórios":
             
             # Clientes por escola
             st.subheader("📊 Clientes por Escola")
-            clientes_escola = df_clientes['escola'].value_counts()
-            fig5 = px.bar(clientes_escola, title="Clientes por Escola")
-            st.plotly_chart(fig5)
+            if not df_clientes.empty:
+                clientes_escola = df_clientes['escola'].value_counts()
+                fig5 = px.bar(clientes_escola, title="Clientes por Escola")
+                st.plotly_chart(fig5)
             
             # Tabela detalhada
             st.subheader("📋 Lista de Clientes")
@@ -918,19 +1056,21 @@ elif menu == "📈 Relatórios":
             # Produtos mais vendidos (se tivermos dados de vendas)
             if st.session_state.pedidos:
                 st.subheader("🔥 Produtos Mais Vendidos")
-                df_vendas = pd.DataFrame(st.session_state.pedidos)
                 # Extrair produtos dos itens dos pedidos
                 todos_produtos = []
                 for pedido in st.session_state.pedidos:
                     if 'itens' in pedido:
                         for item in pedido['itens']:
                             todos_produtos.append(item['produto'])
-                    else:
-                        todos_produtos.append(pedido.get('produto', 'Desconhecido'))
+                    elif 'produto' in pedido:
+                        todos_produtos.append(pedido['produto'])
                 
-                produtos_vendidos = pd.Series(todos_produtos).value_counts().head(10)
-                fig6 = px.bar(produtos_vendidos, title="Top 10 Produtos Mais Vendidos")
-                st.plotly_chart(fig6)
+                if todos_produtos:
+                    produtos_vendidos = pd.Series(todos_produtos).value_counts().head(10)
+                    fig6 = px.bar(produtos_vendidos, title="Top 10 Produtos Mais Vendidos")
+                    st.plotly_chart(fig6)
+                else:
+                    st.info("📊 Nenhum dado de vendas disponível")
             
             # Tabela de produtos
             st.subheader("📋 Todos os Produtos")
@@ -940,10 +1080,21 @@ elif menu == "📈 Relatórios":
 
 # Rodapé
 st.sidebar.markdown("---")
-st.sidebar.info("👕 Sistema de Fardamentos v6.0")
+st.sidebar.info("👕 Sistema de Fardamentos v6.1 - CORRIGIDO")
 
 if st.sidebar.button("🔄 Recarregar Dados"):
     carregar_dados()
+    verificar_e_corrigir_dados()
+    st.rerun()
+
+# Botão para resetar dados corrompidos
+if st.sidebar.button("🗑️ Resetar Dados Corrompidos", type="secondary"):
+    st.session_state.pedidos = []
+    st.session_state.clientes = []
+    st.session_state.produtos = []
+    st.session_state.itens_pedido = []
+    salvar_dados()
+    st.success("✅ Dados resetados com sucesso!")
     st.rerun()
 
 # Notificação de alertas

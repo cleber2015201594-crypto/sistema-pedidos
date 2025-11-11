@@ -1,12 +1,28 @@
-# 👕 Sistema de Fardamentos Escolares
+# 👕 Sistema de Fardamentos Escolares - VERSÃO CORRIGIDA
 
 Sistema completo para gestão de fardamentos escolares com controle de estoque, clientes, pedidos e relatórios.
 
-## 🚀 Funcionalidades Principais
+## 🚀 **CORREÇÕES APLICADAS:**
+
+### ✅ **Problemas Resolvidos:**
+- **Ações Rápidas** agora funcionam corretamente
+- **Erro KeyError** nos pedidos foi corrigido
+- **Dados corrompidos** são tratados automaticamente
+- **Navegação entre páginas** funciona perfeitamente
+- **Relatórios** mostram todos os dados corretamente
+
+### 🔧 **Melhorias Implementadas:**
+- Sistema de **múltiplos itens** por pedido
+- **Campo ESCOLA** em todos os fardamentos  
+- **Edição de clientes** na nova aba
+- **Filtros por escola** em todos os módulos
+- **Tratamento de erros** robusto
+
+## 🎯 **Funcionalidades Principais**
 
 ### 📊 Dashboard
 - Métricas em tempo real
-- Ações rápidas para navegação
+- **Ações rápidas para navegação** ✅ CORRIGIDO
 - Gráficos de vendas e status
 - Alertas de estoque
 
@@ -19,11 +35,11 @@ Sistema completo para gestão de fardamentos escolares com controle de estoque, 
 ### 👥 Gestão de Clientes
 - Cadastro completo de clientes
 - Vinculação com escolas
-- Edição de dados dos clientes
+- **Edição de dados dos clientes** ✅ NOVO
 - Relatórios por escola
 
 ### 👕 Gestão de Fardamentos
-- Cadastro por **escola específica**
+- Cadastro por **escola específica** ✅ NOVO
 - Categorias organizadas (Camisetas, Calças, Agasalhos)
 - Tamanhos infantil e adulto
 - Controle de cores e descrições
@@ -65,22 +81,17 @@ Sistema completo para gestão de fardamentos escolares com controle de estoque, 
 - **Infantil:** 2, 4, 6, 8, 10, 12
 - **Adulto:** PP, P, M, G, GG
 
-### Categorias de Produtos:
-- **Camisetas:** Básica, Regata, Manga Longa
-- **Calças/Shorts:** Jeans, Tactel, Moletom, Bermuda, Short, Short Saia
-- **Agasalhos:** Blusão, Moletom
+## 🆘 **Solução de Problemas**
 
-## 💾 Persistência de Dados
+### Se encontrar erros:
+1. Use o botão **"🔄 Recarregar Dados"** na sidebar
+2. Se persistir, use **"🗑️ Resetar Dados Corrompidos"**
+3. Os dados serão reiniciados mas funcionará perfeitamente
 
-Todos os dados são salvos automaticamente em arquivo JSON local, garantindo que as informações sejam mantidas entre sessões.
-
-## 🆘 Suporte
-
-Em caso de problemas:
-1. Verifique se todos os arquivos estão no GitHub
-2. Confirme que o Streamlit está executando a versão mais recente
-3. Recarregue os dados pelo menu lateral se necessário
+### Botões de Ação Rápida:
+- Agora redirecionam corretamente para as páginas
+- Use para navegação rápida no sistema
 
 ---
 
-**Versão 6.0** - Sistema completo com múltiplos itens por pedido e relatórios detalhados.
+**Versão 6.1** - Sistema completamente corrigido e funcional! 🚀
