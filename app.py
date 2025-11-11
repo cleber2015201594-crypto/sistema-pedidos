@@ -45,7 +45,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # =========================================
-# 🚀 SISTEMA PRINCIPAL - NAVEGAÇÃO MELHORADA
+# 🚀 SISTEMA PRINCIPAL - CORRIGIDO
 # =========================================
 
 st.set_page_config(
@@ -136,52 +136,39 @@ def carregar_dados():
 carregar_dados()
 
 # =========================================
-# 🎨 NAVEGAÇÃO MELHORADA - MENU HORIZONTAL
+# 🎨 NAVEGAÇÃO CORRIGIDA - FUNCIONAL
 # =========================================
 
 st.sidebar.title("👕 Sistema de Fardamentos")
 
-# Menu horizontal com ícones
-menu_options = {
-    "📊 Dashboard": "dashboard",
-    "📦 Pedidos": "pedidos", 
-    "👥 Clientes": "clientes",
-    "👕 Fardamentos": "fardamentos",
-    "📦 Estoque": "estoque",
-    "📈 Relatórios": "relatorios"
-}
+# Menu na sidebar - CORRIGIDO
+menu = st.sidebar.radio(
+    "Navegação",
+    ["📊 Dashboard", "📦 Pedidos", "👥 Clientes", "👕 Fardamentos", "📦 Estoque", "📈 Relatórios"]
+)
 
-# Criar menu horizontal
-cols = st.columns(len(menu_options))
-menu_selected = "dashboard"
-
-for i, (name, key) in enumerate(menu_options.items()):
-    with cols[i]:
-        if st.button(name, use_container_width=True, key=f"menu_{key}"):
-            menu_selected = key
+# HEADER DINÂMICO
+if menu == "📊 Dashboard":
+    st.title("📊 Dashboard - Visão Geral")
+elif menu == "📦 Pedidos":
+    st.title("📦 Gestão de Pedidos") 
+elif menu == "👥 Clientes":
+    st.title("👥 Gestão de Clientes")
+elif menu == "👕 Fardamentos":
+    st.title("👕 Gestão de Fardamentos")
+elif menu == "📦 Estoque":
+    st.title("📦 Controle de Estoque")
+elif menu == "📈 Relatórios":
+    st.title("📈 Relatórios Detalhados")
 
 st.markdown("---")
 
 # =========================================
-# 📱 PÁGINAS DO SISTEMA
+# 📱 PÁGINAS DO SISTEMA - CORRIGIDAS
 # =========================================
 
-# HEADER DINÂMICO
-if menu_selected == "dashboard":
-    st.title("📊 Dashboard - Visão Geral")
-elif menu_selected == "pedidos":
-    st.title("📦 Gestão de Pedidos") 
-elif menu_selected == "clientes":
-    st.title("👥 Gestão de Clientes")
-elif menu_selected == "fardamentos":
-    st.title("👕 Gestão de Fardamentos")
-elif menu_selected == "estoque":
-    st.title("📦 Controle de Estoque")
-elif menu_selected == "relatorios":
-    st.title("📈 Relatórios Detalhados")
-
 # DASHBOARD
-if menu_selected == "dashboard":
+if menu == "📊 Dashboard":
     st.header("🎯 Métricas em Tempo Real")
     
     # Métricas principais
@@ -209,18 +196,15 @@ if menu_selected == "dashboard":
     
     with col1:
         if st.button("📝 Novo Pedido", use_container_width=True):
-            menu_selected = "pedidos"
-            st.rerun()
+            st.success("Vá para a aba '📦 Pedidos' para cadastrar um novo pedido!")
     
     with col2:
         if st.button("➕ Novo Cliente", use_container_width=True):
-            menu_selected = "clientes" 
-            st.rerun()
+            st.success("Vá para a aba '👥 Clientes' para cadastrar um novo cliente!")
     
     with col3:
         if st.button("👕 Novo Fardamento", use_container_width=True):
-            menu_selected = "fardamentos"
-            st.rerun()
+            st.success("Vá para a aba '👕 Fardamentos' para cadastrar um novo fardamento!")
     
     # Seção de Alertas
     st.header("⚠️ Alertas de Estoque")
@@ -257,7 +241,7 @@ if menu_selected == "dashboard":
             st.info("📋 Nenhum pedido para analisar")
 
 # PEDIDOS
-elif menu_selected == "pedidos":
+elif menu == "📦 Pedidos":
     tab1, tab2, tab3, tab4 = st.tabs(["📝 Novo Pedido", "📋 Listar Pedidos", "🔄 Alterar Status", "✏️ Editar Pedido"])
     
     with tab1:
@@ -450,7 +434,7 @@ elif menu_selected == "pedidos":
             st.info("📋 Nenhum pedido cadastrado")
 
 # CLIENTES
-elif menu_selected == "clientes":
+elif menu == "👥 Clientes":
     tab1, tab2 = st.tabs(["➕ Cadastrar Cliente", "📋 Listar Clientes"])
     
     with tab1:
@@ -500,8 +484,8 @@ elif menu_selected == "clientes":
         else:
             st.info("👥 Nenhum cliente cadastrado")
 
-# FARDAMENTOS
-elif menu_selected == "fardamentos":
+# FARDAMENTOS - COM CAMPO ESCOLA
+elif menu == "👕 Fardamentos":
     tab1, tab2, tab3 = st.tabs(["➕ Cadastrar Fardamento", "📋 Listar Fardamentos", "✏️ Editar Fardamento"])
     
     with tab1:
@@ -510,6 +494,9 @@ elif menu_selected == "fardamentos":
         # Categoria principal
         categoria_principal = st.selectbox("📦 Tipo de Fardamento", 
             ["Camisetas", "Calças/Shorts", "Agasalhos"])
+        
+        # NOVO CAMPO: ESCOLA DO FARDAMENTO
+        escola_fardamento = st.selectbox("🏫 Escola do Fardamento", st.session_state.escolas)
         
         # Detalhes específicos por categoria
         if categoria_principal == "Camisetas":
@@ -522,11 +509,16 @@ elif menu_selected == "fardamentos":
             nome_produto = st.selectbox("🧥 Modelo de Agasalho", tipos_agasalhos)
             preco_sugerido = 79.90
         
-        # TAMANHOS COMPLETOS
+        # TAMANHOS COMPLETOS - FILTRADOS PELA ESCOLA
         st.subheader("📏 Seleção de Tamanho")
-        tamanho_selecionado = st.selectbox("🎯 Selecione o tamanho:", todos_tamanhos)
         
-        st.info(f"**Tamanho selecionado:** {tamanho_selecionado}")
+        # Mostrar apenas tamanhos da escola selecionada
+        if escola_fardamento in escolas_config:
+            tamanhos_escola = escolas_config[escola_fardamento]["tamanhos_preferidos"]
+            st.info(f"🎯 Tamanhos disponíveis para {escola_fardamento}: {', '.join(tamanhos_escola)}")
+            tamanho_selecionado = st.selectbox("Selecione o tamanho:", tamanhos_escola)
+        else:
+            tamanho_selecionado = st.selectbox("Selecione o tamanho:", todos_tamanhos)
         
         # Campos comuns
         cor = st.text_input("🎨 Cor Principal", value="Branco")
@@ -539,6 +531,7 @@ elif menu_selected == "fardamentos":
                 novo_produto = {
                     'nome': nome_produto,
                     'categoria': categoria_principal,
+                    'escola': escola_fardamento,  # NOVO CAMPO
                     'tamanho': tamanho_selecionado,
                     'cor': cor,
                     'preco': preco_produto,
@@ -559,20 +552,25 @@ elif menu_selected == "fardamentos":
             df_produtos = pd.DataFrame(st.session_state.produtos)
             
             # Filtros
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
                 cat_filtro = st.selectbox("🔍 Filtrar por categoria:", 
                     ["Todas"] + list(df_produtos['categoria'].unique()))
             with col2:
+                escola_filtro = st.selectbox("🏫 Filtrar por escola:",
+                    ["Todas"] + list(df_produtos['escola'].unique()))
+            with col3:
                 tamanho_filtro = st.selectbox("📏 Filtrar por tamanho:",
                     ["Todos"] + list(df_produtos['tamanho'].unique()))
-            with col3:
+            with col4:
                 cor_filtro = st.selectbox("🎨 Filtrar por cor:",
                     ["Todas"] + list(df_produtos['cor'].unique()))
             
             df_filtrado = df_produtos
             if cat_filtro != "Todas":
                 df_filtrado = df_filtrado[df_filtrado['categoria'] == cat_filtro]
+            if escola_filtro != "Todas":
+                df_filtrado = df_filtrado[df_filtrado['escola'] == escola_filtro]
             if tamanho_filtro != "Todos":
                 df_filtrado = df_filtrado[df_filtrado['tamanho'] == tamanho_filtro]
             if cor_filtro != "Todas":
@@ -587,14 +585,16 @@ elif menu_selected == "fardamentos":
         st.header("✏️ Editar Fardamento")
         if st.session_state.produtos:
             produto_editar = st.selectbox("👕 Selecione o fardamento para editar", 
-                [f"{p['nome']} - Tamanho: {p.get('tamanho', 'Único')} - Cor: {p.get('cor', 'N/A')} - Estoque: {p.get('estoque', 0)}" 
+                [f"{p['nome']} - Escola: {p.get('escola', 'N/A')} - Tamanho: {p.get('tamanho', 'Único')} - Cor: {p.get('cor', 'N/A')} - Estoque: {p.get('estoque', 0)}" 
                  for p in st.session_state.produtos])
             
             if produto_editar:
                 produto_nome = produto_editar.split(' - ')[0]
+                produto_escola = produto_editar.split('Escola: ')[1].split(' - ')[0]
                 produto_tamanho = produto_editar.split('Tamanho: ')[1].split(' - ')[0]
+                
                 produto = next((p for p in st.session_state.produtos 
-                    if p['nome'] == produto_nome and p.get('tamanho') == produto_tamanho), None)
+                    if p['nome'] == produto_nome and p.get('escola') == produto_escola and p.get('tamanho') == produto_tamanho), None)
                 
                 if produto:
                     col1, col2 = st.columns(2)
@@ -619,14 +619,14 @@ elif menu_selected == "fardamentos":
             st.info("👕 Nenhum fardamento cadastrado")
 
 # ESTOQUE
-elif menu_selected == "estoque":
+elif menu == "📦 Estoque":
     tab1, tab2, tab3 = st.tabs(["📊 Ajustar Estoque", "📋 Inventário Completo", "⚠️ Alertas"])
     
     with tab1:
         st.header("📊 Ajuste Rápido de Estoque")
         if st.session_state.produtos:
             produto_ajustar = st.selectbox("👕 Selecione o fardamento", 
-                [f"{p['nome']} - Tamanho: {p.get('tamanho', 'Único')} - Cor: {p.get('cor', 'N/A')} - Estoque: {p.get('estoque', 0)}" 
+                [f"{p['nome']} - Escola: {p.get('escola', 'N/A')} - Tamanho: {p.get('tamanho', 'Único')} - Cor: {p.get('cor', 'N/A')} - Estoque: {p.get('estoque', 0)}" 
                  for p in st.session_state.produtos])
             
             acao = st.radio("🎯 Ação:", ["➕ Adicionar Estoque", "➖ Remover Estoque", "🎯 Definir Estoque Exato"])
@@ -634,9 +634,11 @@ elif menu_selected == "estoque":
             
             if st.button("🔄 Aplicar Ajuste", type="primary"):
                 produto_nome = produto_ajustar.split(' - ')[0]
+                produto_escola = produto_ajustar.split('Escola: ')[1].split(' - ')[0]
                 produto_tamanho = produto_ajustar.split('Tamanho: ')[1].split(' - ')[0]
+                
                 produto = next((p for p in st.session_state.produtos 
-                    if p['nome'] == produto_nome and p.get('tamanho') == produto_tamanho), None)
+                    if p['nome'] == produto_nome and p.get('escola') == produto_escola and p.get('tamanho') == produto_tamanho), None)
                 
                 if produto:
                     estoque_antigo = produto['estoque']
@@ -675,7 +677,7 @@ elif menu_selected == "estoque":
                     return "🔵 Alto"
             
             df_estoque['Status'] = df_estoque['estoque'].apply(status_estoque)
-            df_estoque = df_estoque.sort_values(['categoria', 'tamanho', 'estoque'])
+            df_estoque = df_estoque.sort_values(['escola', 'categoria', 'tamanho', 'estoque'])
             
             st.dataframe(df_estoque, use_container_width=True)
             
@@ -704,12 +706,12 @@ elif menu_selected == "estoque":
             if produtos_esgotados:
                 st.error("🔴 PRODUTOS ESGOTADOS:")
                 for produto in produtos_esgotados:
-                    st.error(f"❌ {produto['nome']} - Tamanho: {produto.get('tamanho', 'N/A')} - Cor: {produto.get('cor', 'N/A')}")
+                    st.error(f"❌ {produto['nome']} - Escola: {produto.get('escola', 'N/A')} - Tamanho: {produto.get('tamanho', 'N/A')} - Cor: {produto.get('cor', 'N/A')}")
             
             if produtos_baixo:
                 st.warning("🟡 ESTOQUE BAIXO (menos de 5 unidades):")
                 for produto in produtos_baixo:
-                    st.warning(f"⚠️ {produto['nome']} - Tamanho: {produto.get('tamanho', 'N/A')} - Estoque: {produto.get('estoque', 0)}")
+                    st.warning(f"⚠️ {produto['nome']} - Escola: {produto.get('escola', 'N/A')} - Tamanho: {produto.get('tamanho', 'N/A')} - Estoque: {produto.get('estoque', 0)}")
             
             if not produtos_esgotados and not produtos_baixo:
                 st.success("✅ Todos os produtos com estoque adequado!")
@@ -717,7 +719,7 @@ elif menu_selected == "estoque":
             st.info("👕 Nenhum fardamento cadastrado")
 
 # RELATÓRIOS
-elif menu_selected == "relatorios":
+elif menu == "📈 Relatórios":
     tab1, tab2, tab3 = st.tabs(["💰 Vendas", "📦 Estoque", "👥 Clientes"])
     
     with tab1:
@@ -753,7 +755,7 @@ elif menu_selected == "relatorios":
 
 # Rodapé
 st.sidebar.markdown("---")
-st.sidebar.info("👕 Sistema de Fardamentos v5.0")
+st.sidebar.info("👕 Sistema de Fardamentos v5.1")
 
 if st.sidebar.button("🔄 Recarregar Dados"):
     carregar_dados()
