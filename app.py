@@ -78,22 +78,6 @@ tamanhos_infantil = ["2", "4", "6", "8", "10", "12"]
 tamanhos_adulto = ["PP", "P", "M", "G", "GG"]
 todos_tamanhos = tamanhos_infantil + tamanhos_adulto
 
-# VÍNCULO ENTRE ESCOLAS E TAMANHOS - CORRIGIDO
-escolas_config = {
-    "Municipal": {
-        "tamanhos_preferidos": ["2", "4", "6", "8", "10", "12", "P", "M", "G", "GG"],
-        "cores_preferidas": ["Branco", "Azul Marinho", "Cinza"]
-    },
-    "Desperta": {
-        "tamanhos_preferidos": ["2", "4", "6", "8", "10", "12", "PP"],
-        "cores_preferidas": ["Branco", "Verde", "Preto"]
-    },
-    "São Tadeu": {
-        "tamanhos_preferidos": ["2", "4", "6", "8", "10", "12", "P"],
-        "cores_preferidas": ["Branco", "Vermelho", "Azul Royal"]
-    }
-}
-
 # PRODUTOS REAIS
 tipos_camisetas = [
     "Camiseta Básica", 
@@ -136,12 +120,12 @@ def carregar_dados():
 carregar_dados()
 
 # =========================================
-# 🎨 NAVEGAÇÃO CORRIGIDA - FUNCIONAL
+# 🎨 NAVEGAÇÃO SIMPLES E FUNCIONAL
 # =========================================
 
 st.sidebar.title("👕 Sistema de Fardamentos")
 
-# Menu na sidebar - CORRIGIDO
+# Menu na sidebar - SIMPLES E FUNCIONAL
 menu = st.sidebar.radio(
     "Navegação",
     ["📊 Dashboard", "📦 Pedidos", "👥 Clientes", "👕 Fardamentos", "📦 Estoque", "📈 Relatórios"]
@@ -189,22 +173,6 @@ if menu == "📊 Dashboard":
     with col4:
         produtos_baixo_estoque = len([p for p in st.session_state.produtos if p.get('estoque', 0) < 5])
         st.metric("Alertas de Estoque", produtos_baixo_estoque, delta=-produtos_baixo_estoque)
-    
-    # Cards de Ação Rápida
-    st.header("🚀 Ações Rápidas")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("📝 Novo Pedido", use_container_width=True):
-            st.success("Vá para a aba '📦 Pedidos' para cadastrar um novo pedido!")
-    
-    with col2:
-        if st.button("➕ Novo Cliente", use_container_width=True):
-            st.success("Vá para a aba '👥 Clientes' para cadastrar um novo cliente!")
-    
-    with col3:
-        if st.button("👕 Novo Fardamento", use_container_width=True):
-            st.success("Vá para a aba '👕 Fardamentos' para cadastrar um novo fardamento!")
     
     # Seção de Alertas
     st.header("⚠️ Alertas de Estoque")
@@ -255,17 +223,12 @@ elif menu == "📦 Pedidos":
             if cliente_selecionado:
                 escola_cliente = cliente_selecionado.split(' - ')[1]
                 st.success(f"🏫 Escola: {escola_cliente}")
-                
-                # Mostrar tamanhos da escola
-                if escola_cliente in escolas_config:
-                    tamanhos_escola = escolas_config[escola_cliente]["tamanhos_preferidos"]
-                    st.info(f"📏 Tamanhos desta escola: {', '.join(tamanhos_escola)}")
         else:
             st.warning("👥 Cadastre clientes primeiro!")
             cliente_selecionado = None
             escola_cliente = None
         
-        # Produtos filtrados pela escola
+        # Produtos disponíveis
         if st.session_state.produtos and cliente_selecionado:
             # Filtro por tipo
             tipo_filtro = st.selectbox("🔍 Filtrar por tipo:", 
@@ -281,11 +244,6 @@ elif menu == "📦 Pedidos":
                     produtos_filtrados = [p for p in produtos_filtrados if any(tipo in p['nome'] for tipo in tipos_calcas)]
                 elif tipo_filtro == "Agasalhos":
                     produtos_filtrados = [p for p in produtos_filtrados if any(tipo in p['nome'] for tipo in tipos_agasalhos)]
-            
-            # Filtrar por tamanhos da escola
-            if escola_cliente in escolas_config:
-                tamanhos_preferidos = escolas_config[escola_cliente]["tamanhos_preferidos"]
-                produtos_filtrados = [p for p in produtos_filtrados if p.get('tamanho') in tamanhos_preferidos]
             
             produtos_disponiveis = [p for p in produtos_filtrados if p.get('estoque', 0) > 0]
             
@@ -444,15 +402,6 @@ elif menu == "👥 Clientes":
         telefone = st.text_input("📞 Telefone (WhatsApp)")
         email = st.text_input("📧 Email (opcional)")
         
-        # Mostrar configurações da escola selecionada
-        if escola_cliente in escolas_config:
-            st.success("🎯 Configuração da Escola:")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write(f"**📏 Tamanhos:** {', '.join(escolas_config[escola_cliente]['tamanhos_preferidos'])}")
-            with col2:
-                st.write(f"**🎨 Cores:** {', '.join(escolas_config[escola_cliente]['cores_preferidas'])}")
-        
         if st.button("✅ Cadastrar Cliente", type="primary"):
             if nome_cliente:
                 novo_cliente = {
@@ -484,7 +433,7 @@ elif menu == "👥 Clientes":
         else:
             st.info("👥 Nenhum cliente cadastrado")
 
-# FARDAMENTOS - COM CAMPO ESCOLA
+# FARDAMENTOS - SIMPLIFICADO SEM ESCOLA
 elif menu == "👕 Fardamentos":
     tab1, tab2, tab3 = st.tabs(["➕ Cadastrar Fardamento", "📋 Listar Fardamentos", "✏️ Editar Fardamento"])
     
@@ -494,9 +443,6 @@ elif menu == "👕 Fardamentos":
         # Categoria principal
         categoria_principal = st.selectbox("📦 Tipo de Fardamento", 
             ["Camisetas", "Calças/Shorts", "Agasalhos"])
-        
-        # NOVO CAMPO: ESCOLA DO FARDAMENTO
-        escola_fardamento = st.selectbox("🏫 Escola do Fardamento", st.session_state.escolas)
         
         # Detalhes específicos por categoria
         if categoria_principal == "Camisetas":
@@ -509,16 +455,9 @@ elif menu == "👕 Fardamentos":
             nome_produto = st.selectbox("🧥 Modelo de Agasalho", tipos_agasalhos)
             preco_sugerido = 79.90
         
-        # TAMANHOS COMPLETOS - FILTRADOS PELA ESCOLA
+        # TAMANHOS COMPLETOS
         st.subheader("📏 Seleção de Tamanho")
-        
-        # Mostrar apenas tamanhos da escola selecionada
-        if escola_fardamento in escolas_config:
-            tamanhos_escola = escolas_config[escola_fardamento]["tamanhos_preferidos"]
-            st.info(f"🎯 Tamanhos disponíveis para {escola_fardamento}: {', '.join(tamanhos_escola)}")
-            tamanho_selecionado = st.selectbox("Selecione o tamanho:", tamanhos_escola)
-        else:
-            tamanho_selecionado = st.selectbox("Selecione o tamanho:", todos_tamanhos)
+        tamanho_selecionado = st.selectbox("Selecione o tamanho:", todos_tamanhos)
         
         # Campos comuns
         cor = st.text_input("🎨 Cor Principal", value="Branco")
@@ -531,7 +470,6 @@ elif menu == "👕 Fardamentos":
                 novo_produto = {
                     'nome': nome_produto,
                     'categoria': categoria_principal,
-                    'escola': escola_fardamento,  # NOVO CAMPO
                     'tamanho': tamanho_selecionado,
                     'cor': cor,
                     'preco': preco_produto,
@@ -551,26 +489,21 @@ elif menu == "👕 Fardamentos":
         if st.session_state.produtos:
             df_produtos = pd.DataFrame(st.session_state.produtos)
             
-            # Filtros
-            col1, col2, col3, col4 = st.columns(4)
+            # Filtros SIMPLES - sem campo escola
+            col1, col2, col3 = st.columns(3)
             with col1:
                 cat_filtro = st.selectbox("🔍 Filtrar por categoria:", 
                     ["Todas"] + list(df_produtos['categoria'].unique()))
             with col2:
-                escola_filtro = st.selectbox("🏫 Filtrar por escola:",
-                    ["Todas"] + list(df_produtos['escola'].unique()))
-            with col3:
                 tamanho_filtro = st.selectbox("📏 Filtrar por tamanho:",
                     ["Todos"] + list(df_produtos['tamanho'].unique()))
-            with col4:
+            with col3:
                 cor_filtro = st.selectbox("🎨 Filtrar por cor:",
                     ["Todas"] + list(df_produtos['cor'].unique()))
             
             df_filtrado = df_produtos
             if cat_filtro != "Todas":
                 df_filtrado = df_filtrado[df_filtrado['categoria'] == cat_filtro]
-            if escola_filtro != "Todas":
-                df_filtrado = df_filtrado[df_filtrado['escola'] == escola_filtro]
             if tamanho_filtro != "Todos":
                 df_filtrado = df_filtrado[df_filtrado['tamanho'] == tamanho_filtro]
             if cor_filtro != "Todas":
@@ -585,16 +518,14 @@ elif menu == "👕 Fardamentos":
         st.header("✏️ Editar Fardamento")
         if st.session_state.produtos:
             produto_editar = st.selectbox("👕 Selecione o fardamento para editar", 
-                [f"{p['nome']} - Escola: {p.get('escola', 'N/A')} - Tamanho: {p.get('tamanho', 'Único')} - Cor: {p.get('cor', 'N/A')} - Estoque: {p.get('estoque', 0)}" 
+                [f"{p['nome']} - Tamanho: {p.get('tamanho', 'Único')} - Cor: {p.get('cor', 'N/A')} - Estoque: {p.get('estoque', 0)}" 
                  for p in st.session_state.produtos])
             
             if produto_editar:
                 produto_nome = produto_editar.split(' - ')[0]
-                produto_escola = produto_editar.split('Escola: ')[1].split(' - ')[0]
                 produto_tamanho = produto_editar.split('Tamanho: ')[1].split(' - ')[0]
-                
                 produto = next((p for p in st.session_state.produtos 
-                    if p['nome'] == produto_nome and p.get('escola') == produto_escola and p.get('tamanho') == produto_tamanho), None)
+                    if p['nome'] == produto_nome and p.get('tamanho') == produto_tamanho), None)
                 
                 if produto:
                     col1, col2 = st.columns(2)
@@ -626,7 +557,7 @@ elif menu == "📦 Estoque":
         st.header("📊 Ajuste Rápido de Estoque")
         if st.session_state.produtos:
             produto_ajustar = st.selectbox("👕 Selecione o fardamento", 
-                [f"{p['nome']} - Escola: {p.get('escola', 'N/A')} - Tamanho: {p.get('tamanho', 'Único')} - Cor: {p.get('cor', 'N/A')} - Estoque: {p.get('estoque', 0)}" 
+                [f"{p['nome']} - Tamanho: {p.get('tamanho', 'Único')} - Cor: {p.get('cor', 'N/A')} - Estoque: {p.get('estoque', 0)}" 
                  for p in st.session_state.produtos])
             
             acao = st.radio("🎯 Ação:", ["➕ Adicionar Estoque", "➖ Remover Estoque", "🎯 Definir Estoque Exato"])
@@ -634,11 +565,9 @@ elif menu == "📦 Estoque":
             
             if st.button("🔄 Aplicar Ajuste", type="primary"):
                 produto_nome = produto_ajustar.split(' - ')[0]
-                produto_escola = produto_ajustar.split('Escola: ')[1].split(' - ')[0]
                 produto_tamanho = produto_ajustar.split('Tamanho: ')[1].split(' - ')[0]
-                
                 produto = next((p for p in st.session_state.produtos 
-                    if p['nome'] == produto_nome and p.get('escola') == produto_escola and p.get('tamanho') == produto_tamanho), None)
+                    if p['nome'] == produto_nome and p.get('tamanho') == produto_tamanho), None)
                 
                 if produto:
                     estoque_antigo = produto['estoque']
@@ -677,7 +606,7 @@ elif menu == "📦 Estoque":
                     return "🔵 Alto"
             
             df_estoque['Status'] = df_estoque['estoque'].apply(status_estoque)
-            df_estoque = df_estoque.sort_values(['escola', 'categoria', 'tamanho', 'estoque'])
+            df_estoque = df_estoque.sort_values(['categoria', 'tamanho', 'estoque'])
             
             st.dataframe(df_estoque, use_container_width=True)
             
@@ -706,12 +635,12 @@ elif menu == "📦 Estoque":
             if produtos_esgotados:
                 st.error("🔴 PRODUTOS ESGOTADOS:")
                 for produto in produtos_esgotados:
-                    st.error(f"❌ {produto['nome']} - Escola: {produto.get('escola', 'N/A')} - Tamanho: {produto.get('tamanho', 'N/A')} - Cor: {produto.get('cor', 'N/A')}")
+                    st.error(f"❌ {produto['nome']} - Tamanho: {produto.get('tamanho', 'N/A')} - Cor: {produto.get('cor', 'N/A')}")
             
             if produtos_baixo:
                 st.warning("🟡 ESTOQUE BAIXO (menos de 5 unidades):")
                 for produto in produtos_baixo:
-                    st.warning(f"⚠️ {produto['nome']} - Escola: {produto.get('escola', 'N/A')} - Tamanho: {produto.get('tamanho', 'N/A')} - Estoque: {produto.get('estoque', 0)}")
+                    st.warning(f"⚠️ {produto['nome']} - Tamanho: {produto.get('tamanho', 'N/A')} - Estoque: {produto.get('estoque', 0)}")
             
             if not produtos_esgotados and not produtos_baixo:
                 st.success("✅ Todos os produtos com estoque adequado!")
@@ -755,7 +684,7 @@ elif menu == "📈 Relatórios":
 
 # Rodapé
 st.sidebar.markdown("---")
-st.sidebar.info("👕 Sistema de Fardamentos v5.1")
+st.sidebar.info("👕 Sistema de Fardamentos v5.2")
 
 if st.sidebar.button("🔄 Recarregar Dados"):
     carregar_dados()
