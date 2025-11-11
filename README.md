@@ -10,6 +10,4 @@ Sistema de gerenciamento de pedidos com controle de estoque, clientes e relatór
 - 📈 Relatórios detalhados
 - 🔐 Sistema de login
 
-## Login
-- **Admin:** admin / Admin@2024!
-- **Vendedor:** vendedor / Vendas@123
+
