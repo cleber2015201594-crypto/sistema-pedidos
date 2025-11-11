@@ -7,7 +7,7 @@ import os
 import hashlib
 
 # =========================================
-# 🔐 SISTEMA DE AUTENTICAÇÃO AVANÇADO
+# 🔐 SISTEMA DE AUTENTICAÇÃO
 # =========================================
 
 def make_hashes(password):
@@ -16,21 +16,7 @@ def make_hashes(password):
 def check_hashes(password, hashed_text):
     return make_hashes(password) == hashed_text
 
-def validar_senha_forte(senha):
-    """Valida se a senha é forte"""
-    if len(senha) < 8:
-        return False, "Senha deve ter pelo menos 8 caracteres"
-    if not any(c.isupper() for c in senha):
-        return False, "Senha deve ter pelo menos uma letra maiúscula"
-    if not any(c.islower() for c in senha):
-        return False, "Senha deve ter pelo menos uma letra minúscula"
-    if not any(c.isdigit() for c in senha):
-        return False, "Senha deve ter pelo menos um número"
-    if not any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?/' for c in senha):
-        return False, "Senha deve ter pelo menos um caractere especial"
-    return True, "Senha válida"
-
-# Usuários e senhas - ALTERE AQUI SUAS SENHAS!
+# Usuários e senhas 
 usuarios = {
     "admin": make_hashes("Admin@2024!"),
     "vendedor": make_hashes("Vendas@123")
@@ -51,7 +37,6 @@ def login():
             st.sidebar.error("Usuário ou senha inválidos")
     return False
 
-# Verificar se está logado
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
@@ -60,13 +45,12 @@ if not st.session_state.logged_in:
     st.stop()
 
 # =========================================
-# 🚀 SISTEMA PRINCIPAL (SÓ ACESSA LOGADO)
+# 🚀 SISTEMA PRINCIPAL - PRODUTOS REAIS
 # =========================================
 
-# Configuração da página
 st.set_page_config(
-    page_title="Sistema de Pedidos",
-    page_icon="📦",
+    page_title="Sistema de Fardamentos",
+    page_icon="👕",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -89,6 +73,35 @@ if 'produtos' not in st.session_state:
 if 'escolas' not in st.session_state:
     st.session_state.escolas = ["Municipal", "Desperta", "São Tadeu"]
 
+# CONFIGURAÇÕES ESPECÍFICAS - PRODUTOS REAIS
+tamanhos_infantil = ["2", "4", "6", "8", "10", "12"]
+tamanhos_adulto = ["PP", "P", "M", "G", "GG"]
+
+# APENAS OS PRODUTOS QUE VOCÊ TEM
+tipos_camisetas = [
+    "Camiseta Básica", 
+    "Camiseta Regata", 
+    "Camiseta Manga Longa"
+    # REMOVIDO: "Camiseta Polo"
+]
+
+tipos_calcas = [
+    "Calça Jeans",
+    "Calça Tactel", 
+    "Calça Moletom",
+    "Bermuda",
+    "Short",
+    "Short Saia"
+]
+
+tipos_agasalhos = [
+    "Blusão",
+    "Moletom"
+    # REMOVIDO: "Jaqueta"
+]
+
+# REMOVIDA SEÇÃO COMPLETA DE ACESSÓRIOS
+
 # Funções auxiliares
 def salvar_dados():
     dados = {
@@ -107,22 +120,20 @@ def carregar_dados():
             st.session_state.clientes = dados.get('clientes', [])
             st.session_state.produtos = dados.get('produtos', [])
 
-# Carregar dados ao iniciar
 carregar_dados()
 
 # Menu principal
-st.sidebar.title("📦 Sistema de Pedidos")
+st.sidebar.title("👕 Sistema de Fardamentos")
 menu = st.sidebar.selectbox("Navegação", 
-    ["Dashboard", "Pedidos", "Clientes", "Produtos", "Estoque", "Relatórios", "Usuários"])
+    ["Dashboard", "Pedidos", "Clientes", "Fardamentos", "Estoque", "Relatórios"])
 
 # HEADER
-st.title("📦 Sistema de Pedidos Completo")
+st.title("👕 Sistema de Fardamentos - Escolas")
 
 # DASHBOARD
 if menu == "Dashboard":
     st.header("📊 Dashboard - Métricas em Tempo Real")
     
-    # Métricas principais
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -147,28 +158,42 @@ if menu == "Dashboard":
     
     if produtos_alerta:
         for produto in produtos_alerta:
-            st.warning(f"🚨 {produto['nome']} - Estoque: {produto.get('estoque', 0)} unidades")
+            st.warning(f"🚨 {produto['nome']} - Tamanho: {produto.get('tamanho', 'N/A')} - Estoque: {produto.get('estoque', 0)} unidades")
     else:
         st.success("✅ Nenhum alerta de estoque no momento")
     
-    # Gráfico de vendas
-    st.subheader("📈 Vendas por Escola")
+    # Gráfico de vendas por tipo
+    st.subheader("📈 Vendas por Tipo de Fardamento")
     if st.session_state.pedidos:
         df_vendas = pd.DataFrame(st.session_state.pedidos)
-        vendas_por_escola = df_vendas['escola'].value_counts()
-        fig = px.bar(vendas_por_escola, title="Vendas por Escola")
+        
+        # Agrupar por tipo (baseado nos produtos reais)
+        def extrair_tipo(nome_produto):
+            if any(tipo in nome_produto for tipo in tipos_camisetas):
+                return "Camisetas"
+            elif any(tipo in nome_produto for tipo in tipos_calcas):
+                return "Calças/Shorts"
+            elif any(tipo in nome_produto for tipo in tipos_agasalhos):
+                return "Agasalhos"
+            else:
+                return "Outros"
+        
+        df_vendas['tipo'] = df_vendas['produto'].apply(extrair_tipo)
+        vendas_por_tipo = df_vendas['tipo'].value_counts()
+        fig = px.pie(vendas_por_tipo, values=vendas_por_tipo.values, 
+                    names=vendas_por_tipo.index, title="Vendas por Tipo de Fardamento")
         st.plotly_chart(fig)
     else:
         st.info("Nenhum pedido cadastrado ainda")
 
-# PEDIDOS
+# PEDIDOS - COM PRODUTOS REAIS
 elif menu == "Pedidos":
-    st.header("📦 Gestão de Pedidos")
+    st.header("📦 Gestão de Pedidos - Fardamentos")
     
-    tab1, tab2, tab3 = st.tabs(["Novo Pedido", "Listar Pedidos", "Alterar Status"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Novo Pedido", "Listar Pedidos", "Alterar Status", "Editar Pedido"])
     
     with tab1:
-        st.subheader("Cadastrar Novo Pedido")
+        st.subheader("📝 Novo Pedido de Fardamento")
         
         # Dados do cliente
         if st.session_state.clientes:
@@ -178,34 +203,49 @@ elif menu == "Pedidos":
             st.warning("Cadastre clientes primeiro!")
             cliente_selecionado = None
         
-        # Produtos
+        # Produtos (apenas os que você tem)
         if st.session_state.produtos:
-            produtos_disponiveis = [p for p in st.session_state.produtos if p.get('estoque', 0) > 0]
+            # Filtro por tipo (apenas categorias reais)
+            tipo_filtro = st.selectbox("Filtrar por tipo:", 
+                ["Todos", "Camisetas", "Calças/Shorts", "Agasalhos"])
+            
+            produtos_filtrados = st.session_state.produtos
+            if tipo_filtro != "Todos":
+                if tipo_filtro == "Camisetas":
+                    produtos_filtrados = [p for p in produtos_filtrados if any(tipo in p['nome'] for tipo in tipos_camisetas)]
+                elif tipo_filtro == "Calças/Shorts":
+                    produtos_filtrados = [p for p in produtos_filtrados if any(tipo in p['nome'] for tipo in tipos_calcas)]
+                elif tipo_filtro == "Agasalhos":
+                    produtos_filtrados = [p for p in produtos_filtrados if any(tipo in p['nome'] for tipo in tipos_agasalhos)]
+            
+            produtos_disponiveis = [p for p in produtos_filtrados if p.get('estoque', 0) > 0]
+            
             if produtos_disponiveis:
-                produto_selecionado = st.selectbox("Produto", 
-                    [f"{p['nome']} - R${p['preco']} - Estoque: {p.get('estoque', 0)}" 
+                produto_selecionado = st.selectbox("Selecione o fardamento", 
+                    [f"{p['nome']} - Tamanho: {p.get('tamanho', 'Único')} - R${p['preco']:.2f} - Estoque: {p.get('estoque', 0)}" 
                      for p in produtos_disponiveis])
                 quantidade = st.number_input("Quantidade", min_value=1, value=1)
             else:
-                st.error("❌ Nenhum produto com estoque disponível!")
+                st.error("❌ Nenhum fardamento disponível com estoque!")
                 produto_selecionado = None
                 quantidade = 0
         else:
-            st.warning("Cadastre produtos primeiro!")
+            st.warning("Cadastre fardamentos primeiro!")
             produto_selecionado = None
             quantidade = 0
         
         data_entrega = st.date_input("Data de Entrega Prevista")
-        observacoes = st.text_area("Observações")
+        observacoes = st.text_area("Observações (cor específica, detalhes, etc)")
         
-        if st.button("Cadastrar Pedido") and cliente_selecionado and produto_selecionado:
+        if st.button("📦 Cadastrar Pedido") and cliente_selecionado and produto_selecionado:
             novo_pedido = {
                 'id': len(st.session_state.pedidos) + 1,
                 'cliente': cliente_selecionado.split(' - ')[0],
                 'escola': cliente_selecionado.split(' - ')[1],
                 'produto': produto_selecionado.split(' - ')[0],
+                'tamanho': produto_selecionado.split('Tamanho: ')[1].split(' - ')[0],
                 'quantidade': quantidade,
-                'preco_unitario': float(produto_selecionado.split(' - ')[1].replace('R$', '')),
+                'preco_unitario': float(produto_selecionado.split('R$')[1].split(' - ')[0]),
                 'data_pedido': datetime.now().strftime("%d/%m/%Y %H:%M"),
                 'data_entrega_prevista': data_entrega.strftime("%d/%m/%Y"),
                 'status': 'Pendente',
@@ -214,33 +254,56 @@ elif menu == "Pedidos":
             
             # Atualizar estoque
             produto_nome = produto_selecionado.split(' - ')[0]
+            produto_tamanho = produto_selecionado.split('Tamanho: ')[1].split(' - ')[0]
             for produto in st.session_state.produtos:
-                if produto['nome'] == produto_nome:
+                if produto['nome'] == produto_nome and produto.get('tamanho') == produto_tamanho:
                     produto['estoque'] -= quantidade
                     break
             
             st.session_state.pedidos.append(novo_pedido)
             salvar_dados()
             st.success("✅ Pedido cadastrado com sucesso!")
+            st.balloons()
     
     with tab2:
-        st.subheader("Lista de Pedidos")
+        st.subheader("📋 Lista de Pedidos")
         if st.session_state.pedidos:
             df_pedidos = pd.DataFrame(st.session_state.pedidos)
-            st.dataframe(df_pedidos)
+            df_pedidos = df_pedidos.sort_values('id', ascending=False)
+            
+            # Filtros
+            col1, col2 = st.columns(2)
+            with col1:
+                status_filtro = st.multiselect("Filtrar por status:", 
+                    options=df_pedidos['status'].unique(),
+                    default=df_pedidos['status'].unique())
+            with col2:
+                escola_filtro = st.multiselect("Filtrar por escola:",
+                    options=df_pedidos['escola'].unique(),
+                    default=df_pedidos['escola'].unique())
+            
+            df_filtrado = df_pedidos[
+                (df_pedidos['status'].isin(status_filtro)) & 
+                (df_pedidos['escola'].isin(escola_filtro))
+            ]
+            
+            st.dataframe(df_filtrado, use_container_width=True)
+            
+            # Resumo
+            st.info(f"📊 Mostrando {len(df_filtrado)} de {len(df_pedidos)} pedidos")
         else:
             st.info("Nenhum pedido cadastrado")
     
     with tab3:
-        st.subheader("Alterar Status do Pedido")
+        st.subheader("🔄 Alterar Status do Pedido")
         if st.session_state.pedidos:
             pedido_selecionado = st.selectbox("Selecione o pedido", 
-                [f"ID: {p['id']} - {p['cliente']} - {p['produto']}" for p in st.session_state.pedidos])
+                [f"ID: {p['id']} - {p['cliente']} - {p['produto']} - Status: {p['status']}" for p in st.session_state.pedidos])
             
             novo_status = st.selectbox("Novo Status", 
-                ["Pendente", "Entregue", "Cancelado"])
+                ["Pendente", "Cortando", "Costurando", "Pronto", "Entregue", "Cancelado"])
             
-            if st.button("Atualizar Status"):
+            if st.button("🔄 Atualizar Status"):
                 pedido_id = int(pedido_selecionado.split(' - ')[0].replace('ID: ', ''))
                 for pedido in st.session_state.pedidos:
                     if pedido['id'] == pedido_id:
@@ -248,6 +311,54 @@ elif menu == "Pedidos":
                         break
                 salvar_dados()
                 st.success("✅ Status atualizado com sucesso!")
+        else:
+            st.info("Nenhum pedido cadastrado")
+    
+    with tab4:
+        st.subheader("✏️ Editar Pedido")
+        if st.session_state.pedidos:
+            pedido_editar = st.selectbox("Selecione o pedido para editar", 
+                [f"ID: {p['id']} - {p['cliente']} - {p['produto']}" for p in st.session_state.pedidos],
+                key="editar_pedido")
+            
+            if pedido_editar:
+                pedido_id = int(pedido_editar.split(' - ')[0].replace('ID: ', ''))
+                pedido = next((p for p in st.session_state.pedidos if p['id'] == pedido_id), None)
+                
+                if pedido:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.write(f"**Produto:** {pedido['produto']}")
+                        st.write(f"**Tamanho:** {pedido.get('tamanho', 'N/A')}")
+                        nova_quantidade = st.number_input("Nova Quantidade", 
+                            min_value=1, value=pedido['quantidade'], key="qtd_edit")
+                    with col2:
+                        nova_data = st.date_input("Nova Data de Entrega", 
+                            value=datetime.strptime(pedido['data_entrega_prevista'], "%d/%m/%Y"),
+                            key="data_edit")
+                        novas_observacoes = st.text_area("Novas Observações", 
+                            value=pedido['observacoes'], key="obs_edit")
+                    
+                    if st.button("💾 Salvar Alterações"):
+                        # Reverter estoque antigo e aplicar novo
+                        produto_antigo = next((p for p in st.session_state.produtos 
+                            if p['nome'] == pedido['produto'] and p.get('tamanho') == pedido.get('tamanho')), None)
+                        
+                        if produto_antigo:
+                            diferenca = nova_quantidade - pedido['quantidade']
+                            produto_antigo['estoque'] -= diferenca
+                            
+                            if produto_antigo['estoque'] < 0:
+                                st.error("❌ Estoque insuficiente para esta quantidade!")
+                                produto_antigo['estoque'] += diferenca  # Reverte
+                            else:
+                                pedido['quantidade'] = nova_quantidade
+                                pedido['data_entrega_prevista'] = nova_data.strftime("%d/%m/%Y")
+                                pedido['observacoes'] = novas_observacoes
+                                salvar_dados()
+                                st.success("✅ Pedido atualizado com sucesso!")
+                        else:
+                            st.error("❌ Produto não encontrado no estoque")
         else:
             st.info("Nenhum pedido cadastrado")
 
@@ -258,19 +369,20 @@ elif menu == "Clientes":
     tab1, tab2 = st.tabs(["Cadastrar Cliente", "Listar Clientes"])
     
     with tab1:
-        st.subheader("Novo Cliente")
+        st.subheader("➕ Novo Cliente")
         nome_cliente = st.text_input("Nome do Cliente")
         escola_cliente = st.selectbox("Escola", st.session_state.escolas)
-        telefone = st.text_input("Telefone")
-        email = st.text_input("Email")
+        telefone = st.text_input("Telefone (WhatsApp)")
+        email = st.text_input("Email (opcional)")
         
-        if st.button("Cadastrar Cliente"):
+        if st.button("✅ Cadastrar Cliente"):
             if nome_cliente:
                 novo_cliente = {
                     'nome': nome_cliente,
                     'escola': escola_cliente,
                     'telefone': telefone,
-                    'email': email
+                    'email': email,
+                    'data_cadastro': datetime.now().strftime("%d/%m/%Y")
                 }
                 st.session_state.clientes.append(novo_cliente)
                 salvar_dados()
@@ -279,120 +391,250 @@ elif menu == "Clientes":
                 st.error("❌ Nome do cliente é obrigatório!")
     
     with tab2:
-        st.subheader("Clientes Cadastrados")
+        st.subheader("📋 Clientes Cadastrados")
         if st.session_state.clientes:
             df_clientes = pd.DataFrame(st.session_state.clientes)
-            st.dataframe(df_clientes)
-            
-            # Relatório por escola
-            st.subheader("📊 Clientes por Escola")
-            clientes_por_escola = df_clientes['escola'].value_counts()
-            fig = px.pie(values=clientes_por_escola.values, 
-                        names=clientes_por_escola.index, 
-                        title="Distribuição de Clientes por Escola")
-            st.plotly_chart(fig)
+            st.dataframe(df_clientes, use_container_width=True)
         else:
             st.info("Nenhum cliente cadastrado")
 
-# PRODUTOS
-elif menu == "Produtos":
-    st.header("👕 Gestão de Produtos")
+# FARDAMENTOS - APENAS PRODUTOS REAIS
+elif menu == "Fardamentos":
+    st.header("👕 Gestão de Fardamentos")
     
-    tab1, tab2 = st.tabs(["Cadastrar Produto", "Listar Produtos"])
+    tab1, tab2, tab3 = st.tabs(["Cadastrar Fardamento", "Listar Fardamentos", "Editar Fardamento"])
     
     with tab1:
-        st.subheader("Novo Produto")
-        nome_produto = st.text_input("Nome do Produto")
-        preco_produto = st.number_input("Preço (R$)", min_value=0.0, step=0.01)
-        estoque_inicial = st.number_input("Estoque Inicial", min_value=0, value=0)
-        categoria = st.selectbox("Categoria", ["Uniforme", "Material", "Acessório", "Outros"])
+        st.subheader("➕ Novo Fardamento")
         
-        if st.button("Cadastrar Produto"):
-            if nome_produto and preco_produto >= 0:
+        # Categoria principal (apenas as que você tem)
+        categoria_principal = st.selectbox("Tipo de Fardamento", 
+            ["Camisetas", "Calças/Shorts", "Agasalhos"])
+        
+        # Detalhes específicos por categoria
+        if categoria_principal == "Camisetas":
+            nome_produto = st.selectbox("Modelo de Camiseta", tipos_camisetas)
+            tamanho = st.selectbox("Tamanho", tamanhos_adulto)
+            preco_sugerido = 29.90
+        elif categoria_principal == "Calças/Shorts":
+            nome_produto = st.selectbox("Modelo", tipos_calcas)
+            tamanho = st.selectbox("Tamanho", tamanhos_adulto)
+            preco_sugerido = 49.90
+        else:  # Agasalhos
+            nome_produto = st.selectbox("Modelo de Agasalho", tipos_agasalhos)
+            tamanho = st.selectbox("Tamanho", tamanhos_adulto)
+            preco_sugerido = 79.90
+        
+        # Campos comuns
+        cor = st.text_input("Cor Principal", value="Branco")
+        preco_produto = st.number_input("Preço (R$)", min_value=0.0, step=0.01, value=preco_sugerido)
+        estoque_inicial = st.number_input("Estoque Inicial", min_value=0, value=10)
+        descricao = st.text_area("Descrição Adicional", placeholder="Ex: Gola V, malha fria, etc...")
+        
+        if st.button("✅ Cadastrar Fardamento"):
+            if nome_produto:
                 novo_produto = {
                     'nome': nome_produto,
+                    'categoria': categoria_principal,
+                    'tamanho': tamanho,
+                    'cor': cor,
                     'preco': preco_produto,
                     'estoque': estoque_inicial,
-                    'categoria': categoria
+                    'descricao': descricao,
+                    'data_cadastro': datetime.now().strftime("%d/%m/%Y %H:%M")
                 }
                 st.session_state.produtos.append(novo_produto)
                 salvar_dados()
-                st.success("✅ Produto cadastrado com sucesso!")
+                st.success("✅ Fardamento cadastrado com sucesso!")
+                st.balloons()
             else:
                 st.error("❌ Preencha todos os campos obrigatórios!")
     
     with tab2:
-        st.subheader("Produtos Cadastrados")
+        st.subheader("📋 Fardamentos Cadastrados")
         if st.session_state.produtos:
             df_produtos = pd.DataFrame(st.session_state.produtos)
-            st.dataframe(df_produtos)
+            
+            # Filtros
+            col1, col2 = st.columns(2)
+            with col1:
+                cat_filtro = st.selectbox("Filtrar por categoria:", 
+                    ["Todas"] + list(df_produtos['categoria'].unique()))
+            with col2:
+                tamanho_filtro = st.selectbox("Filtrar por tamanho:",
+                    ["Todos"] + list(df_produtos['tamanho'].unique()))
+            
+            df_filtrado = df_produtos
+            if cat_filtro != "Todas":
+                df_filtrado = df_filtrado[df_filtrado['categoria'] == cat_filtro]
+            if tamanho_filtro != "Todos":
+                df_filtrado = df_filtrado[df_filtrado['tamanho'] == tamanho_filtro]
+            
+            st.dataframe(df_filtrado, use_container_width=True)
+            st.info(f"📊 Mostrando {len(df_filtrado)} de {len(df_produtos)} fardamentos")
         else:
-            st.info("Nenhum produto cadastrado")
+            st.info("Nenhum fardamento cadastrado")
+    
+    with tab3:
+        st.subheader("✏️ Editar Fardamento")
+        if st.session_state.produtos:
+            produto_editar = st.selectbox("Selecione o fardamento para editar", 
+                [f"{p['nome']} - Tamanho: {p.get('tamanho', 'Único')} - Cor: {p.get('cor', 'N/A')} - Estoque: {p.get('estoque', 0)}" 
+                 for p in st.session_state.produtos])
+            
+            if produto_editar:
+                produto_nome = produto_editar.split(' - ')[0]
+                produto_tamanho = produto_editar.split('Tamanho: ')[1].split(' - ')[0]
+                produto = next((p for p in st.session_state.produtos 
+                    if p['nome'] == produto_nome and p.get('tamanho') == produto_tamanho), None)
+                
+                if produto:
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        novo_preco = st.number_input("Novo Preço (R$)", 
+                            value=produto['preco'], min_value=0.0, step=0.01)
+                        novo_estoque = st.number_input("Novo Estoque", 
+                            value=produto['estoque'], min_value=0)
+                    with col2:
+                        nova_cor = st.text_input("Nova Cor", value=produto.get('cor', ''))
+                        nova_descricao = st.text_area("Nova Descrição", 
+                            value=produto.get('descricao', ''))
+                    
+                    if st.button("💾 Salvar Alterações"):
+                        produto['preco'] = novo_preco
+                        produto['estoque'] = novo_estoque
+                        produto['cor'] = nova_cor
+                        produto['descricao'] = nova_descricao
+                        salvar_dados()
+                        st.success("✅ Fardamento atualizado com sucesso!")
+        else:
+            st.info("Nenhum fardamento cadastrado")
 
-# ESTOQUE
+# ESTOQUE - APENAS PRODUTOS REAIS
 elif menu == "Estoque":
-    st.header("📦 Controle de Estoque")
+    st.header("📦 Controle de Estoque - Fardamentos")
     
-    # Alertas de estoque baixo
-    produtos_baixo_estoque = [p for p in st.session_state.produtos if p.get('estoque', 0) < 5]
+    tab1, tab2, tab3 = st.tabs(["Ajustar Estoque", "Inventário Completo", "Alertas"])
     
-    if produtos_baixo_estoque:
-        st.error("⚠️ ALERTA - Produtos com Estoque Baixo:")
-        for produto in produtos_baixo_estoque:
-            st.error(f"🚨 {produto['nome']} - Apenas {produto.get('estoque', 0)} unidades restantes")
-    else:
-        st.success("✅ Estoque em dia - Nenhum produto com estoque crítico")
+    with tab1:
+        st.subheader("📊 Ajuste Rápido de Estoque")
+        if st.session_state.produtos:
+            produto_ajustar = st.selectbox("Selecione o fardamento", 
+                [f"{p['nome']} - Tamanho: {p.get('tamanho', 'Único')} - Estoque: {p.get('estoque', 0)}" 
+                 for p in st.session_state.produtos])
+            
+            acao = st.radio("Ação:", ["Adicionar Estoque", "Remover Estoque", "Definir Estoque Exato"])
+            quantidade = st.number_input("Quantidade", min_value=1, value=1)
+            
+            if st.button("🔄 Aplicar Ajuste"):
+                produto_nome = produto_ajustar.split(' - ')[0]
+                produto_tamanho = produto_ajustar.split('Tamanho: ')[1].split(' - ')[0]
+                produto = next((p for p in st.session_state.produtos 
+                    if p['nome'] == produto_nome and p.get('tamanho') == produto_tamanho), None)
+                
+                if produto:
+                    estoque_antigo = produto['estoque']
+                    
+                    if acao == "Adicionar Estoque":
+                        produto['estoque'] += quantidade
+                        st.success(f"✅ +{quantidade} unidades adicionadas | Estoque: {estoque_antigo} → {produto['estoque']}")
+                    elif acao == "Remover Estoque":
+                        if produto['estoque'] >= quantidade:
+                            produto['estoque'] -= quantidade
+                            st.success(f"✅ -{quantidade} unidades removidas | Estoque: {estoque_antigo} → {produto['estoque']}")
+                        else:
+                            st.error("❌ Estoque insuficiente!")
+                    else:  # Definir Estoque Exato
+                        produto['estoque'] = quantidade
+                        st.success(f"✅ Estoque definido: {estoque_antigo} → {quantidade} unidades")
+                    
+                    salvar_dados()
+        else:
+            st.info("Nenhum fardamento cadastrado")
     
-    # Lista completa de estoque
-    st.subheader("Inventário Completo")
-    if st.session_state.produtos:
-        df_estoque = pd.DataFrame(st.session_state.produtos)
-        
-        # Adicionar coluna de status
-        def status_estoque(quantidade):
-            if quantidade == 0:
-                return "🔴 Esgotado"
-            elif quantidade < 5:
-                return "🟡 Baixo"
-            else:
-                return "🟢 Normal"
-        
-        df_estoque['Status'] = df_estoque['estoque'].apply(status_estoque)
-        st.dataframe(df_estoque)
-        
-        # Gráfico de estoque
-        st.subheader("📊 Análise de Estoque")
-        fig = px.bar(df_estoque, x='nome', y='estoque', color='Status',
-                    title="Nível de Estoque por Produto")
-        st.plotly_chart(fig)
-    else:
-        st.info("Nenhum produto cadastrado")
+    with tab2:
+        st.subheader("📋 Inventário Completo")
+        if st.session_state.produtos:
+            df_estoque = pd.DataFrame(st.session_state.produtos)
+            
+            # Status de estoque
+            def status_estoque(quantidade):
+                if quantidade == 0:
+                    return "🔴 Esgotado"
+                elif quantidade < 3:
+                    return "🟡 Crítico"
+                elif quantidade < 10:
+                    return "🟢 Normal"
+                else:
+                    return "🔵 Alto"
+            
+            df_estoque['Status'] = df_estoque['estoque'].apply(status_estoque)
+            df_estoque = df_estoque.sort_values(['categoria', 'estoque'])
+            
+            st.dataframe(df_estoque, use_container_width=True)
+            
+            # Estatísticas
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                total_itens = len(df_estoque)
+                st.metric("Total de Itens", total_itens)
+            with col2:
+                esgotados = len(df_estoque[df_estoque['estoque'] == 0])
+                st.metric("Itens Esgotados", esgotados)
+            with col3:
+                estoque_baixo = len(df_estoque[df_estoque['estoque'] < 5])
+                st.metric("Estoque Baixo", estoque_baixo)
+            
+        else:
+            st.info("Nenhum fardamento cadastrado")
+    
+    with tab3:
+        st.subheader("⚠️ Alertas de Estoque")
+        if st.session_state.produtos:
+            # Produtos esgotados
+            produtos_esgotados = [p for p in st.session_state.produtos if p.get('estoque', 0) == 0]
+            produtos_baixo = [p for p in st.session_state.produtos if 0 < p.get('estoque', 0) < 5]
+            
+            if produtos_esgotados:
+                st.error("🔴 PRODUTOS ESGOTADOS:")
+                for produto in produtos_esgotados:
+                    st.error(f"❌ {produto['nome']} - Tamanho: {produto.get('tamanho', 'N/A')}")
+            
+            if produtos_baixo:
+                st.warning("🟡 ESTOQUE BAIXO (menos de 5 unidades):")
+                for produto in produtos_baixo:
+                    st.warning(f"⚠️ {produto['nome']} - Tamanho: {produto.get('tamanho', 'N/A')} - Estoque: {produto.get('estoque', 0)}")
+            
+            if not produtos_esgotados and not produtos_baixo:
+                st.success("✅ Todos os produtos com estoque adequado!")
+        else:
+            st.info("Nenhum fardamento cadastrado")
 
 # RELATÓRIOS
 elif menu == "Relatórios":
     st.header("📈 Relatórios Detalhados")
     
-    tab1, tab2, tab3, tab4 = st.tabs(["Vendas", "Clientes", "Estoque", "Pedidos"])
+    tab1, tab2, tab3 = st.tabs(["Vendas", "Estoque", "Clientes"])
     
     with tab1:
-        st.subheader("Relatório de Vendas")
+        st.subheader("💰 Relatório de Vendas")
         if st.session_state.pedidos:
             df_vendas = pd.DataFrame(st.session_state.pedidos)
             
             # Vendas por escola
-            st.write("### Vendas por Escola")
-            vendas_escola = df_vendas.groupby('escola').size()
-            fig1 = px.bar(vendas_escola, title="Total de Vendas por Escola")
+            st.write("### 📊 Vendas por Escola")
+            vendas_escola = df_vendas['escola'].value_counts()
+            fig1 = px.bar(vendas_escola, title="Vendas por Escola")
             st.plotly_chart(fig1)
             
             # Vendas por status
-            st.write("### Vendas por Status")
+            st.write("### 📈 Status dos Pedidos")
             vendas_status = df_vendas['status'].value_counts()
             fig2 = px.pie(vendas_status, values=vendas_status.values, 
                          names=vendas_status.index, title="Distribuição por Status")
             st.plotly_chart(fig2)
             
-            # Exportar dados
+            # Exportar
             if st.button("📥 Exportar Relatório de Vendas"):
                 csv = df_vendas.to_csv(index=False)
                 st.download_button(
@@ -403,147 +645,16 @@ elif menu == "Relatórios":
                 )
         else:
             st.info("Nenhuma venda registrada")
-    
-    with tab2:
-        st.subheader("Relatório de Clientes")
-        if st.session_state.clientes:
-            df_clientes = pd.DataFrame(st.session_state.clientes)
-            st.dataframe(df_clientes)
-            
-            # Análise por escola
-            st.write("### Clientes por Escola")
-            clientes_escola = df_clientes['escola'].value_counts()
-            fig = px.bar(clientes_escola, title="Clientes por Escola")
-            st.plotly_chart(fig)
-        else:
-            st.info("Nenhum cliente cadastrado")
-    
-    with tab3:
-        st.subheader("Relatório de Estoque")
-        if st.session_state.produtos:
-            df_estoque = pd.DataFrame(st.session_state.produtos)
-            
-            # Produtos por categoria
-            st.write("### Produtos por Categoria")
-            produtos_categoria = df_estoque['categoria'].value_counts()
-            fig = px.pie(produtos_categoria, values=produtos_categoria.values,
-                        names=produtos_categoria.index, title="Distribuição por Categoria")
-            st.plotly_chart(fig)
-            
-            # Alertas detalhados
-            st.write("### Alertas de Estoque")
-            produtos_alerta = df_estoque[df_estoque['estoque'] < 5]
-            if not produtos_alerta.empty:
-                st.dataframe(produtos_alerta)
-            else:
-                st.success("✅ Nenhum produto com estoque baixo")
-        else:
-            st.info("Nenhum produto cadastrado")
-    
-    with tab4:
-        st.subheader("Relatório de Pedidos")
-        if st.session_state.pedidos:
-            df_pedidos = pd.DataFrame(st.session_state.pedidos)
-            
-            # Filtros
-            col1, col2 = st.columns(2)
-            with col1:
-                status_filtro = st.multiselect("Filtrar por Status", 
-                    options=df_pedidos['status'].unique(),
-                    default=df_pedidos['status'].unique())
-            
-            with col2:
-                escola_filtro = st.multiselect("Filtrar por Escola",
-                    options=df_pedidos['escola'].unique(),
-                    default=df_pedidos['escola'].unique())
-            
-            # Aplicar filtros
-            df_filtrado = df_pedidos[
-                (df_pedidos['status'].isin(status_filtro)) & 
-                (df_pedidos['escola'].isin(escola_filtro))
-            ]
-            
-            st.dataframe(df_filtrado)
-            
-            # Métricas do relatório
-            total_valor = (df_filtrado['quantidade'] * df_filtrado['preco_unitario']).sum()
-            st.metric("Valor Total Filtrado", f"R$ {total_valor:.2f}")
-            
-        else:
-            st.info("Nenhum pedido cadastrado")
-
-# =========================================
-# 👥 GERENCIAMENTO DE USUÁRIOS
-# =========================================
-elif menu == "Usuários":
-    st.header("👥 Gerenciamento de Usuários")
-    
-    if st.session_state.username != "admin":
-        st.warning("⚠️ Apenas administradores podem gerenciar usuários")
-        st.stop()
-    
-    tab1, tab2, tab3 = st.tabs(["Adicionar Usuário", "Alterar Senha", "Usuários Cadastrados"])
-    
-    with tab1:
-        st.subheader("Adicionar Novo Usuário")
-        novo_usuario = st.text_input("Nome de usuário")
-        nova_senha = st.text_input("Senha", type='password')
-        confirmar_senha = st.text_input("Confirmar Senha", type='password')
-        
-        if st.button("Cadastrar Usuário"):
-            if novo_usuario and nova_senha:
-                if nova_senha == confirmar_senha:
-                    senha_valida, mensagem = validar_senha_forte(nova_senha)
-                    if senha_valida:
-                        if novo_usuario not in usuarios:
-                            usuarios[novo_usuario] = make_hashes(nova_senha)
-                            st.success(f"✅ Usuário {novo_usuario} cadastrado com sucesso!")
-                        else:
-                            st.error("❌ Usuário já existe")
-                    else:
-                        st.error(f"❌ {mensagem}")
-                else:
-                    st.error("❌ Senhas não coincidem")
-            else:
-                st.error("❌ Preencha todos os campos")
-    
-    with tab2:
-        st.subheader("Alterar Senha")
-        usuario_alterar = st.selectbox("Selecione o usuário", list(usuarios.keys()))
-        nova_senha_alt = st.text_input("Nova Senha", type='password', key="nova_senha_alt")
-        confirmar_senha_alt = st.text_input("Confirmar Nova Senha", type='password', key="confirmar_senha_alt")
-        
-        if st.button("Alterar Senha"):
-            if nova_senha_alt and confirmar_senha_alt:
-                if nova_senha_alt == confirmar_senha_alt:
-                    senha_valida, mensagem = validar_senha_forte(nova_senha_alt)
-                    if senha_valida:
-                        usuarios[usuario_alterar] = make_hashes(nova_senha_alt)
-                        st.success(f"✅ Senha do usuário {usuario_alterar} alterada com sucesso!")
-                    else:
-                        st.error(f"❌ {mensagem}")
-                else:
-                    st.error("❌ Senhas não coincidem")
-            else:
-                st.error("❌ Preencha todos os campos")
-    
-    with tab3:
-        st.subheader("Usuários do Sistema")
-        st.write("**Usuários cadastrados:**")
-        for usuario in usuarios:
-            st.write(f"- {usuario}")
-        
-        st.info("💡 Use senhas fortes com letras, números e caracteres especiais")
 
 # Rodapé
 st.sidebar.markdown("---")
-st.sidebar.info("Sistema de Pedidos Completo v2.0")
+st.sidebar.info("👕 Sistema de Fardamentos v3.0")
 
 if st.sidebar.button("🔄 Recarregar Dados"):
     carregar_dados()
     st.rerun()
 
-# Notificação de alertas ao iniciar
+# Notificação de alertas
 if 'alertas_mostrados' not in st.session_state:
     st.session_state.alertas_mostrados = True
     produtos_baixo_estoque = [p for p in st.session_state.produtos if p.get('estoque', 0) < 5]
