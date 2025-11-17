@@ -5,12 +5,10 @@ from datetime import datetime, date
 import json
 import os
 import hashlib
-import psycopg2
-from psycopg2.extras import RealDictCursor
-import urllib.parse as urlparse
+import sqlite3
 
 # =========================================
-# 🔐 SISTEMA DE AUTENTICAÇÃO AVANÇADO
+# 🔐 SISTEMA DE AUTENTICAÇÃO - SQLITE
 # =========================================
 
 def make_hashes(password):
@@ -19,66 +17,18 @@ def make_hashes(password):
 def check_hashes(password, hashed_text):
     return make_hashes(password) == hashed_text
 
-def atualizar_estrutura_banco():
-    """Atualiza a estrutura do banco se necessário"""
-    conn = get_connection()
-    if not conn:
-        return False
-    
+def get_connection():
+    """Estabelece conexão com SQLite"""
     try:
-        cur = conn.cursor()
-        
-        # Verificar se a coluna escola_id existe na tabela produtos
-        cur.execute("""
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name='produtos' and column_name='escola_id'
-        """)
-        resultado = cur.fetchone()
-        
-        if not resultado:
-            # Adicionar coluna escola_id se não existir
-            cur.execute('ALTER TABLE produtos ADD COLUMN escola_id INTEGER REFERENCES escolas(id)')
-            st.success("✅ Estrutura do banco atualizada: coluna escola_id adicionada")
-        
-        # Verificar se a coluna forma_pagamento existe na tabela pedidos
-        cur.execute("""
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name='pedidos' and column_name='forma_pagamento'
-        """)
-        resultado = cur.fetchone()
-        
-        if not resultado:
-            # Adicionar coluna forma_pagamento se não existir
-            cur.execute('ALTER TABLE pedidos ADD COLUMN forma_pagamento VARCHAR(50) DEFAULT \'Dinheiro\'')
-            st.success("✅ Estrutura do banco atualizada: coluna forma_pagamento adicionada")
-        
-        # Verificar se a coluna data_entrega_real existe na tabela pedidos
-        cur.execute("""
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name='pedidos' and column_name='data_entrega_real'
-        """)
-        resultado = cur.fetchone()
-        
-        if not resultado:
-            # Adicionar coluna data_entrega_real se não existir
-            cur.execute('ALTER TABLE pedidos ADD COLUMN data_entrega_real DATE')
-            st.success("✅ Estrutura do banco atualizada: coluna data_entrega_real adicionada")
-        
-        conn.commit()
-        return True
-        
+        conn = sqlite3.connect('fardamentos.db', check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        return conn
     except Exception as e:
-        conn.rollback()
-        st.error(f"Erro ao atualizar estrutura do banco: {str(e)}")
-        return False
-    finally:
-        conn.close()
+        st.error(f"Erro de conexão com o banco: {str(e)}")
+        return None
 
 def init_db():
-    """Inicializa o banco de dados e cria tabelas necessárias"""
+    """Inicializa o banco SQLite"""
     conn = get_connection()
     if conn:
         try:
@@ -87,12 +37,12 @@ def init_db():
             # Tabela de usuários
             cur.execute('''
                 CREATE TABLE IF NOT EXISTS usuarios (
-                    id SERIAL PRIMARY KEY,
-                    username VARCHAR(50) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    nome_completo VARCHAR(100),
-                    tipo VARCHAR(20) DEFAULT 'vendedor',
-                    ativo BOOLEAN DEFAULT TRUE,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    nome_completo TEXT,
+                    tipo TEXT DEFAULT 'vendedor',
+                    ativo BOOLEAN DEFAULT 1,
                     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
@@ -100,18 +50,18 @@ def init_db():
             # Tabela de escolas
             cur.execute('''
                 CREATE TABLE IF NOT EXISTS escolas (
-                    id SERIAL PRIMARY KEY,
-                    nome VARCHAR(100) UNIQUE NOT NULL
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nome TEXT UNIQUE NOT NULL
                 )
             ''')
             
             # Tabela de clientes
             cur.execute('''
                 CREATE TABLE IF NOT EXISTS clientes (
-                    id SERIAL PRIMARY KEY,
-                    nome VARCHAR(200) NOT NULL,
-                    telefone VARCHAR(20),
-                    email VARCHAR(100),
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nome TEXT NOT NULL,
+                    telefone TEXT,
+                    email TEXT,
                     data_cadastro DATE DEFAULT CURRENT_DATE
                 )
             ''')
@@ -119,12 +69,12 @@ def init_db():
             # Tabela de produtos
             cur.execute('''
                 CREATE TABLE IF NOT EXISTS produtos (
-                    id SERIAL PRIMARY KEY,
-                    nome VARCHAR(200) NOT NULL,
-                    categoria VARCHAR(100),
-                    tamanho VARCHAR(10),
-                    cor VARCHAR(50),
-                    preco DECIMAL(10,2),
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nome TEXT NOT NULL,
+                    categoria TEXT,
+                    tamanho TEXT,
+                    cor TEXT,
+                    preco REAL,
                     estoque INTEGER DEFAULT 0,
                     descricao TEXT,
                     escola_id INTEGER REFERENCES escolas(id),
@@ -135,16 +85,16 @@ def init_db():
             # Tabela de pedidos
             cur.execute('''
                 CREATE TABLE IF NOT EXISTS pedidos (
-                    id SERIAL PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     cliente_id INTEGER REFERENCES clientes(id),
                     escola_id INTEGER REFERENCES escolas(id),
-                    status VARCHAR(50) DEFAULT 'Pendente',
+                    status TEXT DEFAULT 'Pendente',
                     data_pedido TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     data_entrega_prevista DATE,
                     data_entrega_real DATE,
-                    forma_pagamento VARCHAR(50) DEFAULT 'Dinheiro',
+                    forma_pagamento TEXT DEFAULT 'Dinheiro',
                     quantidade_total INTEGER,
-                    valor_total DECIMAL(10,2),
+                    valor_total REAL,
                     observacoes TEXT
                 )
             ''')
@@ -152,80 +102,57 @@ def init_db():
             # Tabela de itens do pedido
             cur.execute('''
                 CREATE TABLE IF NOT EXISTS pedido_itens (
-                    id SERIAL PRIMARY KEY,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     pedido_id INTEGER REFERENCES pedidos(id) ON DELETE CASCADE,
                     produto_id INTEGER REFERENCES produtos(id),
                     quantidade INTEGER,
-                    preco_unitario DECIMAL(10,2),
-                    subtotal DECIMAL(10,2)
+                    preco_unitario REAL,
+                    subtotal REAL
                 )
             ''')
             
-            # Inserir usuários padrão se não existirem
+            # Inserir usuários padrão
             usuarios_padrao = [
                 ('admin', make_hashes('Admin@2024!'), 'Administrador', 'admin'),
                 ('vendedor', make_hashes('Vendas@123'), 'Vendedor', 'vendedor')
             ]
             
             for username, password_hash, nome, tipo in usuarios_padrao:
-                cur.execute('''
-                    INSERT INTO usuarios (username, password_hash, nome_completo, tipo) 
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (username) DO NOTHING
-                ''', (username, password_hash, nome, tipo))
+                try:
+                    cur.execute('''
+                        INSERT OR IGNORE INTO usuarios (username, password_hash, nome_completo, tipo) 
+                        VALUES (?, ?, ?, ?)
+                    ''', (username, password_hash, nome, tipo))
+                except Exception as e:
+                    pass
             
             # Inserir escolas padrão
             escolas_padrao = ['Municipal', 'Desperta', 'São Tadeu']
             for escola in escolas_padrao:
-                cur.execute('''
-                    INSERT INTO escolas (nome) VALUES (%s)
-                    ON CONFLICT (nome) DO NOTHING
-                ''', (escola,))
+                try:
+                    cur.execute('INSERT OR IGNORE INTO escolas (nome) VALUES (?)', (escola,))
+                except Exception as e:
+                    pass
             
             conn.commit()
-            
-            # Atualizar estrutura do banco após criação inicial
-            atualizar_estrutura_banco()
             
         except Exception as e:
             st.error(f"Erro ao inicializar banco: {str(e)}")
         finally:
             conn.close()
 
-def get_connection():
-    """Estabelece conexão com o PostgreSQL"""
-    try:
-        # Para Render.com - usa DATABASE_URL do environment
-        database_url = os.environ.get('DATABASE_URL')
-        
-        if database_url:
-            # Converte postgres:// para postgresql://
-            if database_url.startswith('postgres://'):
-                database_url = database_url.replace('postgres://', 'postgresql://')
-            
-            conn = psycopg2.connect(database_url, sslmode='require')
-            return conn
-        else:
-            # Para desenvolvimento local
-            st.error("DATABASE_URL não configurada")
-            return None
-            
-    except Exception as e:
-        st.error(f"Erro de conexão com o banco: {str(e)}")
-        return None
-
 def verificar_login(username, password):
     """Verifica credenciais no banco de dados"""
     conn = get_connection()
     if not conn:
-        return False, "Erro de conexão"
+        return False, "Erro de conexão", None
     
     try:
         cur = conn.cursor()
         cur.execute('''
             SELECT password_hash, nome_completo, tipo 
             FROM usuarios 
-            WHERE username = %s AND ativo = TRUE
+            WHERE username = ? AND ativo = 1
         ''', (username,))
         
         resultado = cur.fetchone()
@@ -250,7 +177,7 @@ def alterar_senha(username, senha_atual, nova_senha):
         cur = conn.cursor()
         
         # Verificar senha atual
-        cur.execute('SELECT password_hash FROM usuarios WHERE username = %s', (username,))
+        cur.execute('SELECT password_hash FROM usuarios WHERE username = ?', (username,))
         resultado = cur.fetchone()
         
         if not resultado or not check_hashes(senha_atual, resultado[0]):
@@ -259,7 +186,7 @@ def alterar_senha(username, senha_atual, nova_senha):
         # Atualizar senha
         nova_senha_hash = make_hashes(nova_senha)
         cur.execute(
-            'UPDATE usuarios SET password_hash = %s WHERE username = %s',
+            'UPDATE usuarios SET password_hash = ? WHERE username = ?',
             (nova_senha_hash, username)
         )
         conn.commit()
@@ -303,13 +230,13 @@ def criar_usuario(username, password, nome_completo, tipo):
         
         cur.execute('''
             INSERT INTO usuarios (username, password_hash, nome_completo, tipo)
-            VALUES (%s, %s, %s, %s)
+            VALUES (?, ?, ?, ?)
         ''', (username, password_hash, nome_completo, tipo))
         
         conn.commit()
         return True, "Usuário criado com sucesso!"
         
-    except psycopg2.IntegrityError:
+    except sqlite3.IntegrityError:
         return False, "Username já existe"
     except Exception as e:
         conn.rollback()
@@ -372,7 +299,7 @@ todos_tamanhos = tamanhos_infantil + tamanhos_adulto
 categorias_produtos = ["Camisetas", "Calças/Shorts", "Agasalhos", "Acessórios", "Outros"]
 
 # =========================================
-# 🔧 FUNÇÕES DO BANCO DE DADOS
+# 🔧 FUNÇÕES DO BANCO DE DADOS - SQLITE
 # =========================================
 
 # FUNÇÕES PARA ESCOLAS
@@ -398,7 +325,7 @@ def obter_escola_por_id(escola_id):
     
     try:
         cur = conn.cursor()
-        cur.execute("SELECT * FROM escolas WHERE id = %s", (escola_id,))
+        cur.execute("SELECT * FROM escolas WHERE id = ?", (escola_id,))
         return cur.fetchone()
     except Exception as e:
         st.error(f"Erro ao obter escola: {e}")
@@ -417,7 +344,7 @@ def adicionar_cliente(nome, telefone, email):
         data_cadastro = datetime.now().strftime("%Y-%m-%d")
         
         cur.execute(
-            "INSERT INTO clientes (nome, telefone, email, data_cadastro) VALUES (%s, %s, %s, %s) RETURNING id",
+            "INSERT INTO clientes (nome, telefone, email, data_cadastro) VALUES (?, ?, ?, ?)",
             (nome, telefone, email, data_cadastro)
         )
         
@@ -437,9 +364,7 @@ def listar_clientes():
     
     try:
         cur = conn.cursor()
-        cur.execute('''
-            SELECT * FROM clientes ORDER BY nome
-        ''')
+        cur.execute('SELECT * FROM clientes ORDER BY nome')
         return cur.fetchall()
     except Exception as e:
         st.error(f"Erro ao listar clientes: {e}")
@@ -456,11 +381,11 @@ def excluir_cliente(cliente_id):
         cur = conn.cursor()
         
         # Verificar se tem pedidos
-        cur.execute("SELECT COUNT(*) FROM pedidos WHERE cliente_id = %s", (cliente_id,))
+        cur.execute("SELECT COUNT(*) FROM pedidos WHERE cliente_id = ?", (cliente_id,))
         if cur.fetchone()[0] > 0:
             return False, "Cliente possui pedidos e não pode ser excluído"
         
-        cur.execute("DELETE FROM clientes WHERE id = %s", (cliente_id,))
+        cur.execute("DELETE FROM clientes WHERE id = ?", (cliente_id,))
         conn.commit()
         return True, "Cliente excluído com sucesso"
         
@@ -481,7 +406,7 @@ def adicionar_produto(nome, categoria, tamanho, cor, preco, estoque, descricao, 
         
         cur.execute('''
             INSERT INTO produtos (nome, categoria, tamanho, cor, preco, estoque, descricao, escola_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ''', (nome, categoria, tamanho, cor, preco, estoque, descricao, escola_id))
         
         conn.commit()
@@ -505,7 +430,7 @@ def listar_produtos_por_escola(escola_id=None):
                 SELECT p.*, e.nome as escola_nome 
                 FROM produtos p 
                 LEFT JOIN escolas e ON p.escola_id = e.id 
-                WHERE p.escola_id = %s
+                WHERE p.escola_id = ?
                 ORDER BY p.categoria, p.nome
             ''', (escola_id,))
         else:
@@ -529,7 +454,7 @@ def atualizar_estoque(produto_id, nova_quantidade):
     
     try:
         cur = conn.cursor()
-        cur.execute("UPDATE produtos SET estoque = %s WHERE id = %s", (nova_quantidade, produto_id))
+        cur.execute("UPDATE produtos SET estoque = ? WHERE id = ?", (nova_quantidade, produto_id))
         conn.commit()
         return True, "Estoque atualizado com sucesso!"
     except Exception as e:
@@ -552,19 +477,19 @@ def adicionar_pedido(cliente_id, escola_id, itens, data_entrega, forma_pagamento
         
         cur.execute('''
             INSERT INTO pedidos (cliente_id, escola_id, data_entrega_prevista, forma_pagamento, quantidade_total, valor_total, observacoes)
-            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         ''', (cliente_id, escola_id, data_entrega, forma_pagamento, quantidade_total, valor_total, observacoes))
         
-        pedido_id = cur.fetchone()[0]
+        pedido_id = cur.lastrowid
         
         for item in itens:
             cur.execute('''
                 INSERT INTO pedido_itens (pedido_id, produto_id, quantidade, preco_unitario, subtotal)
-                VALUES (%s, %s, %s, %s, %s)
+                VALUES (?, ?, ?, ?, ?)
             ''', (pedido_id, item['produto_id'], item['quantidade'], item['preco_unitario'], item['subtotal']))
             
             # Atualizar estoque
-            cur.execute("UPDATE produtos SET estoque = estoque - %s WHERE id = %s", 
+            cur.execute("UPDATE produtos SET estoque = estoque - ? WHERE id = ?", 
                        (item['quantidade'], item['produto_id']))
         
         conn.commit()
@@ -590,7 +515,7 @@ def listar_pedidos_por_escola(escola_id=None):
                 FROM pedidos p
                 JOIN clientes c ON p.cliente_id = c.id
                 JOIN escolas e ON p.escola_id = e.id
-                WHERE p.escola_id = %s
+                WHERE p.escola_id = ?
                 ORDER BY p.data_pedido DESC
             ''', (escola_id,))
         else:
@@ -620,14 +545,14 @@ def atualizar_status_pedido(pedido_id, novo_status):
             data_entrega = datetime.now().strftime("%Y-%m-%d")
             cur.execute('''
                 UPDATE pedidos 
-                SET status = %s, data_entrega_real = %s 
-                WHERE id = %s
+                SET status = ?, data_entrega_real = ? 
+                WHERE id = ?
             ''', (novo_status, data_entrega, pedido_id))
         else:
             cur.execute('''
                 UPDATE pedidos 
-                SET status = %s 
-                WHERE id = %s
+                SET status = ? 
+                WHERE id = ?
             ''', (novo_status, pedido_id))
         
         conn.commit()
@@ -648,14 +573,15 @@ def excluir_pedido(pedido_id):
         cur = conn.cursor()
         
         # Restaurar estoque
-        cur.execute('SELECT produto_id, quantidade FROM pedido_itens WHERE pedido_id = %s', (pedido_id,))
+        cur.execute('SELECT produto_id, quantidade FROM pedido_itens WHERE pedido_id = ?', (pedido_id,))
         itens = cur.fetchall()
         
-        for produto_id, quantidade in itens:
-            cur.execute("UPDATE produtos SET estoque = estoque + %s WHERE id = %s", (quantidade, produto_id))
+        for item in itens:
+            produto_id, quantidade = item[0], item[1]
+            cur.execute("UPDATE produtos SET estoque = estoque + ? WHERE id = ?", (quantidade, produto_id))
         
-        # Excluir pedido (itens serão excluídos por CASCADE)
-        cur.execute("DELETE FROM pedidos WHERE id = %s", (pedido_id,))
+        # Excluir pedido
+        cur.execute("DELETE FROM pedidos WHERE id = ?", (pedido_id,))
         
         conn.commit()
         return True, "Pedido excluído com sucesso"
@@ -667,7 +593,7 @@ def excluir_pedido(pedido_id):
         conn.close()
 
 # =========================================
-# 📊 FUNÇÕES PARA RELATÓRIOS
+# 📊 FUNÇÕES PARA RELATÓRIOS - SQLITE
 # =========================================
 
 def gerar_relatorio_vendas_por_escola(escola_id=None):
@@ -687,7 +613,7 @@ def gerar_relatorio_vendas_por_escola(escola_id=None):
                     SUM(p.quantidade_total) as total_itens,
                     SUM(p.valor_total) as total_vendas
                 FROM pedidos p
-                WHERE p.escola_id = %s
+                WHERE p.escola_id = ?
                 GROUP BY DATE(p.data_pedido)
                 ORDER BY data DESC
             ''', (escola_id,))
@@ -743,7 +669,7 @@ def gerar_relatorio_produtos_por_escola(escola_id=None):
                 FROM pedido_itens pi
                 JOIN produtos pr ON pi.produto_id = pr.id
                 JOIN pedidos p ON pi.pedido_id = p.id
-                WHERE p.escola_id = %s
+                WHERE p.escola_id = ?
                 GROUP BY pr.id, pr.nome, pr.categoria, pr.tamanho, pr.cor
                 ORDER BY total_vendido DESC
             ''', (escola_id,))
@@ -813,7 +739,7 @@ if st.session_state.tipo_usuario == 'admin':
         usuarios = listar_usuarios()
         if usuarios:
             for usuario in usuarios:
-                status = "✅ Ativo" if usuario[4] else "❌ Inativo"
+                status = "✅ Ativo" if usuario[4] == 1 else "❌ Inativo"
                 st.write(f"**{usuario[1]}** - {usuario[2]} ({usuario[3]}) - {status}")
 
 # Menu de alteração de senha
@@ -1152,11 +1078,11 @@ elif menu == "📦 Estoque":
                                 "Nova quantidade",
                                 min_value=0,
                                 value=produto[6],
-                                key=f"estoque_{produto[0]}"
+                                key=f"estoque_{produto[0]}_{idx}"
                             )
                         
                         with col3:
-                            if st.button("💾 Atualizar", key=f"btn_{produto[0]}"):
+                            if st.button("💾 Atualizar", key=f"btn_{produto[0]}_{idx}"):
                                 if nova_quantidade != produto[6]:
                                     sucesso, msg = atualizar_estoque(produto[0], nova_quantidade)
                                     if sucesso:
@@ -1588,7 +1514,7 @@ elif menu == "📈 Relatórios":
 
 # Rodapé
 st.sidebar.markdown("---")
-st.sidebar.info("👕 Sistema de Fardamentos v9.0\n\n🏫 **Organizado por Escola**\n🗄️ Banco de Dados PostgreSQL")
+st.sidebar.info("👕 Sistema de Fardamentos v9.0\n\n🏫 **Organizado por Escola**\n🗄️ Banco SQLite")
 
 # Botão para recarregar dados
 if st.sidebar.button("🔄 Recarregar Dados"):
