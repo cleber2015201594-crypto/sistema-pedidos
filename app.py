@@ -1,3 +1,25 @@
+try:
+    import streamlit as st
+    import pandas as pd
+    import plotly.express as px
+    from datetime import datetime, date
+    import hashlib
+    import sqlite3
+    import time
+    import urllib.parse
+    import json
+    
+    st.success("✅ Todas as bibliotecas carregadas com sucesso!")
+except ImportError as e:
+    st.error(f"❌ Erro ao importar: {e}")
+
+# CONFIGURAÇÃO DA PÁGINA DEVE VIR DEPOIS DAS IMPORTAÇÕES
+st.set_page_config(
+    page_title="Sistema de Fardamentos - Factory",
+    page_icon="👕",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 import streamlit as st
 import pandas as pd
 import plotly.express as px
